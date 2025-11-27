@@ -1,5 +1,7 @@
 ## Installation
 
+[![arXiv](https://img.shields.io/badge/cs.LO-2410.16429-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2507.14722)
+
 Clone the repository including submodules:
 
 ```bash
@@ -178,3 +180,16 @@ This method connects your stdin/stdout to the REPL's stdin/stdout.
 * **[Pantograph](https://github.com/stanford-centaur/PyPantograph)**
 
 > For a detailed comparison, refer to the LeanTree paper.
+
+## Reference
+
+```
+@inproceedings{
+    kripner2025leantree,
+    title={LeanTree: Accelerating White-Box Proof Search with Factorized States in Lean 4},
+    author={Mat{\v{e}}j Kripner and Michal Sustr and Milan Straka},
+    booktitle={2nd AI for Math Workshop @ ICML 2025},
+    year={2025},
+    url={https://openreview.net/forum?id=pROVJwTb6w}
+}
+```
