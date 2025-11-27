@@ -1,6 +1,6 @@
 ## Installation
 
-[![arXiv](https://img.shields.io/badge/cs.LO-2410.16429-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2507.14722)
+[![arXiv](https://img.shields.io/badge/cs.LG-2507.14722-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2507.14722)
 
 Clone the repository including submodules:
 
