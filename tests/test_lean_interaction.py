@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from leantree.repl_adapter.interaction import LeanProofBranch, LeanServer
+from leantree.repl_adapter.interaction import LeanProofBranch, LeanProcess
 
 from conftest import *
 import pytest
@@ -26,7 +26,7 @@ def print_tactic(s: LeanProofBranch, t: str):
     return result
 
 
-def apply_tactics(env: LeanServer, thm_with_sorry: str, tactics: list[str]):
+def apply_tactics(env: LeanProcess, thm_with_sorry: str, tactics: list[str]):
     states = list(env.proofs_from_sorries(thm_with_sorry))
     assert len(states) == 1
     s = states[0]
@@ -67,7 +67,7 @@ def test_thm_disj_comm(fixture_env):
     ])
 
 
-def test_apply_cases_tactic(fixture_env: LeanServer):
+def test_apply_cases_tactic(fixture_env: LeanProcess):
     env = fixture_env
     env.send_command("import Mathlib\nopen BigOperators Real Nat Topology Rat")
     branch = env.proof_from_sorry("theorem succ_less_double_succ (n : Nat) : n > 0 → n < 2 * n := by sorry")

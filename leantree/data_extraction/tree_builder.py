@@ -7,13 +7,13 @@ from leantree.core.proof_tree import ProofTree, ProofTreeNode, ProofTreeEdge
 from leantree.file_span import FilePosition
 from leantree.repl_adapter.data import ReplLoadedLeanFile, SingletonProofTree, SingletonProofTreeNode, \
     ReplCompilationUnit
-from leantree.repl_adapter.interaction import LeanProofBranch, LeanServer
+from leantree.repl_adapter.interaction import LeanProofBranch, LeanProcess
 from leantree.utils import get_source_with_sorries, replace_with_sorries
 
 
 class ProofTreeBuilder:
     @classmethod
-    def run_proof_trees(cls, theorem_str: str, unit: ReplCompilationUnit, env: LeanServer) -> LeanTheorem:
+    def run_proof_trees(cls, theorem_str: str, unit: ReplCompilationUnit, env: LeanProcess) -> LeanTheorem:
         block_to_tree: dict[LeanTacticBlock, SingletonProofTree] = {}
         by_blocks = []
         theorem = LeanTheorem(
@@ -41,7 +41,7 @@ class ProofTreeBuilder:
         return theorem
 
     @classmethod
-    def run_file_proof_trees(cls, loaded_file: ReplLoadedLeanFile, env: LeanServer) -> LeanFile:
+    def run_file_proof_trees(cls, loaded_file: ReplLoadedLeanFile, env: LeanProcess) -> LeanFile:
         theorems = []
         file = LeanFile(
             path=Path(loaded_file.path),

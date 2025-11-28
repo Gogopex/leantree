@@ -10,7 +10,7 @@ from leantree.core.lean_file import LeanFile, LeanTheorem, LeanTacticBlock, Stor
 from leantree.data_extraction.tree_builder import ProofTreeBuilder
 from leantree.data_extraction.tree_postprocessor import ProofTreePostprocessor
 from leantree.repl_adapter.data import SingletonProofTree
-from leantree.repl_adapter.interaction import LeanServer, LeanInteractionException
+from leantree.repl_adapter.interaction import LeanProcess, LeanInteractionException
 from leantree.repl_adapter.data_extraction import LeanFileParser
 from leantree.repl_adapter.singleton_trees import SingletonTreeBuilder
 
@@ -40,13 +40,13 @@ class LeanProject:
             raise Exception(f"lean-toolchain file does not exist: {path}")
         return path.read_text().strip()
 
-    def environment(self) -> LeanServer:
-        return LeanServer(self.repl_path, self.path, self.logger)
+    def environment(self) -> LeanProcess:
+        return LeanProcess(self.repl_path, self.path, self.logger)
 
     def load_theorem(
             self,
             theorem: str,
-            env: LeanServer,
+            env: LeanProcess,
     ) -> LeanTheorem:
         checkpoint = env.checkpoint()
         loaded_unit = env.send_theorem(theorem)

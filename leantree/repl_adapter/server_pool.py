@@ -3,11 +3,22 @@ import asyncio
 from pathlib import Path
 from typing import Callable, Coroutine
 import psutil
-from leantree.repl_adapter.interaction import LeanServer
+from leantree.repl_adapter.interaction import LeanProcess
 from leantree.utils import Logger, NullLogger, to_sync
 
+# TODO:
+#  - running the server on a http port
+#  - caching based on imported libraries
 
-class LeanServerPool:
+class LeanServer:
+    """Manages a LeanProcessPool and exposes it over a HTTP port."""
+    pass
+
+class LeanClient:
+    """Connects to a LeanServer."""
+    pass
+
+class LeanProcessPool:
     """
     A pool of LeanServer instances for parallel processing.
 
@@ -22,7 +33,7 @@ class LeanServerPool:
             project_path: Path,
             max_servers: int,
             max_memory_utilization: float = 80.0,  # percentage
-            env_setup_async: Callable[[LeanServer], Coroutine] | None = None,
+            env_setup_async: Callable[[LeanProcess], Coroutine] | None = None,
             logger: Logger | None = None,
     ):
         """
@@ -42,7 +53,7 @@ class LeanServerPool:
         self.logger = logger if logger else NullLogger()
 
         # Pool state
-        self.available_servers: list[LeanServer] = []
+        self.available_servers: list[LeanProcess] = []
         self._num_used_servers: int = 0
         self.lock = asyncio.Lock()  # Use asyncio.Lock instead of threading.RLock
         self.server_available_event = asyncio.Event()
@@ -51,9 +62,9 @@ class LeanServerPool:
         total_memory = psutil.virtual_memory().total
         self.memory_threshold_per_server = int(total_memory * (self.max_memory_utilization / 100) / self.max_servers)
 
-    async def _create_server_async(self) -> LeanServer:
+    async def _create_server_async(self) -> LeanProcess:
         """Create a new LeanServer instance."""
-        server = LeanServer(
+        server = LeanProcess(
             self.repl_exe,
             self.project_path,
             self.logger,
@@ -89,7 +100,7 @@ class LeanServerPool:
                 
             self.logger.info(f"Started {len(new_servers)} servers. Available: {len(self.available_servers)}, Used: {self._num_used_servers}")
 
-    async def get_server_async(self, blocking: bool = True) -> LeanServer | None:
+    async def get_server_async(self, blocking: bool = True) -> LeanProcess | None:
         """
         Get a server from the pool asynchronously.
 
@@ -134,7 +145,7 @@ class LeanServerPool:
                         self.server_available_event.clear()
                     return server
 
-    async def return_server_async(self, server: LeanServer):
+    async def return_server_async(self, server: LeanProcess):
         """
         Return a server to the pool.
 

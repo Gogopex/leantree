@@ -11,7 +11,7 @@ from datasets import load_dataset
 from leantree import utils
 from leantree.core.lean_file import LeanTheorem
 from leantree.core.project import LeanProject
-from leantree.repl_adapter.interaction import LeanProcessException, LeanServer
+from leantree.repl_adapter.interaction import LeanProcessException, LeanProcess
 from leantree.utils import Logger, LogLevel
 
 
@@ -139,7 +139,7 @@ def main():
     # Initialize counters
     total = successful = failed = skipped = timed_out = 0
     current_header = None
-    env: LeanServer | None = None
+    env: LeanProcess | None = None
     env_steps = 0
 
     def restart_env():

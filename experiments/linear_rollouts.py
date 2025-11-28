@@ -16,7 +16,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessor, L
 from tqdm import tqdm
 
 from leantree import utils
-from leantree.repl_adapter.interaction import LeanServer, LeanInteractionException
+from leantree.repl_adapter.interaction import LeanProcess, LeanInteractionException
 from leantree.core.lean import LeanProofState, LeanGoal
 from experiments.interlm_adapter import InterLMMiniF2FAdapter
 
@@ -369,7 +369,7 @@ class RolloutProofSearch:
     def __init__(self, args: argparse.Namespace, theorem: str, logger: Logger):
         self.args = args
         self.theorem = theorem
-        self.repl: LeanServer | None = None
+        self.repl: LeanProcess | None = None
         self.logger = logger
 
         # The current rollout - partial or completed proof.
@@ -569,7 +569,7 @@ async def start_repls(args: argparse.Namespace, rollouts: list[RolloutProofSearc
     async def _start_repl(rollout: RolloutProofSearch):
         print(f"Starting REPL for {rollout.theorem[:30]}{'...' if len(rollout.theorem) > 30 else ''}...")
         assert rollout.repl is None
-        repl = LeanServer(
+        repl = LeanProcess(
             args.repl_exe,
             args.project_path,
             utils.Logger(utils.LogLevel.DEBUG),

@@ -85,10 +85,11 @@ class PickledEnv:
     path: Path
 
 
+# TODO: maybe replace with `print axioms` to also catch `apply?`/`admit`
 _eq_sorry_pattern = re.compile(r'\b:=\s*sorry\b')
 
 
-class LeanServer:
+class LeanProcess:
     def __init__(self, repl_exe: Path, project_path: Path, logger: utils.Logger = None, pool: Any = None):
         self.repl_exe = repl_exe
         self.project_path = project_path
@@ -498,7 +499,7 @@ class LeanServer:
 
 
 class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
-    def __init__(self, env: LeanServer, proof_state_id: int, all_goals: list[LeanGoal] | LeanGoal,
+    def __init__(self, env: LeanProcess, proof_state_id: int, all_goals: list[LeanGoal] | LeanGoal,
                  goals_mask: list[bool] = None):
         self._env = env
         self._proof_state_id = proof_state_id
@@ -567,7 +568,7 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
             response = await self._send_tactic_async(tactic)
             self._proof_state_id = response["proofState"]
         assert response is not None
-        final_goals = LeanServer._goals_from_response(response)
+        final_goals = LeanProcess._goals_from_response(response)
         assert old_state.semantic_equals(LeanProofState(final_goals))
 
         self._all_goals = final_goals
@@ -597,7 +598,7 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
         step_error = self.step_error_from_response(response)
         if step_error:
             raise LeanInteractionException(f"Step verification error: {step_error}")
-        new_goals = LeanServer._goals_from_response(response)
+        new_goals = LeanProcess._goals_from_response(response)
         metavar_graph = MetavarGraph.from_dict(response["mctxAfter"])
 
         next_states = []

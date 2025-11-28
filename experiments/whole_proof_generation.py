@@ -11,7 +11,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessor, L
 from tqdm import tqdm
 
 from leantree import utils
-from leantree.repl_adapter.interaction import LeanServer, LeanInteractionException, LeanProcessException
+from leantree.repl_adapter.interaction import LeanProcess, LeanInteractionException, LeanProcessException
 from experiments.interlm_adapter import InterLMMiniF2FAdapter
 
 MINIF2F_HEADER = (
@@ -217,7 +217,7 @@ class Verifier:
         self.args = args
         self.logger = logger
 
-        self.repl: LeanServer | None = None
+        self.repl: LeanProcess | None = None
 
     async def verify(self, theorem: str, proof: str) -> tuple[ProofResult, str, LeanInteractionException | str | None]:
         restarts = 0
@@ -256,7 +256,7 @@ class Verifier:
         if self.repl:
             await self.repl.stop_async_safe()
             self.repl = None
-        self.repl = LeanServer(
+        self.repl = LeanProcess(
             self.args.repl_exe,
             self.args.project_path,
             # utils.Logger(utils.LogLevel.DEBUG),
