@@ -1,4 +1,4 @@
-from leantree.core.project import LeanProject
+from leantree.core.project import LeanProject, LeanLibrary, LeanLibraries
 from leantree.core.lean import (
     LeanGoal, LeanTactic, LeanProofState, LeanHypothesis, ProofTactic, ProofGoal, LeanStep, LeanContext, ProofState
 )

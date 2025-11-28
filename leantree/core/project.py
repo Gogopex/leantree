@@ -3,6 +3,7 @@ from typing import Self
 import shutil
 import subprocess
 from pathlib import Path
+from dataclasses import dataclass, replace
 
 from leantree import utils
 from leantree.core.lean_file import LeanFile, LeanTheorem, LeanTacticBlock, StoredError
@@ -155,6 +156,7 @@ class LeanProject:
             repl_path: Path | str | None = None,
             logger: utils.Logger | None = None,
             suppress_output: bool = False,
+            libraries: list["LeanLibrary"] | None = None,
     ) -> Self:
         if path is None:
             path = "leantree_project"
@@ -202,21 +204,26 @@ class LeanProject:
         # lean-toolchain with that of the latest mathlib. So instead, we add mathlib manually.
         run_command(["lake", "init", ".", "lib.toml"])
 
-        # Note that the `git` attribute is only necessary for old lake versions.
-        mathlib_require = """
-[[require]]
-name = "mathlib"
-scope = "leanprover-community"
-git = "https://github.com/leanprover-community/mathlib4"
-        """.strip()
+        require_blocks = []
+        for library in (libraries or []):
+            if library.name == "mathlib" and library.rev is None and lean_version:
+                # Specify Mathlib version - otherwise, the latest version will be used, which may not be compatible with the Lean version.
+                library.rev = lean_version
 
-        if lean_version:
-            # Specify the Mathlib version - otherwise, the latest version will be used, which may not be compatible with the Lean version.
-            mathlib_require += f"\nrev = \"{lean_version}\""
-            
-        lakefile = path / "lakefile.toml"
-        lakefile_text = lakefile.read_text().strip() + "\n\n" + mathlib_require + "\n"
-        lakefile.write_text(lakefile_text)
+            block = f"""
+[[require]]
+name = "{library.name}"
+scope = "{library.scope}"
+git = "{library.git}"
+            """.strip()
+            if library.rev:
+                block += f"\nrev = {library.rev}"
+            require_blocks.append(block)
+
+        if require_blocks:
+            lakefile = path / "lakefile.toml"
+            lakefile_text = lakefile.read_text().strip() + "\n\n" + "\n\n".join(require_blocks) + "\n"
+            lakefile.write_text(lakefile_text)
 
         # Note: We could disable automatic toolchain updates with --keep-toolchain, but that is not available in old
         # versions. For more info, see:
@@ -231,7 +238,8 @@ git = "https://github.com/leanprover-community/mathlib4"
             repl_path = cls._get_default_repl_exe_path()
         repl_path = Path(repl_path)
         if not repl_path.exists():
-            raise Exception(f"REPL executable does not exist: {repl_path}.\nPlease run `lake build` in: {cls._get_default_repl_path()}")
+            raise Exception(
+                f"REPL executable does not exist: {repl_path}.\nPlease run `lake build` in: {cls._get_default_repl_path()}")
         return repl_path
 
     @classmethod
@@ -241,3 +249,23 @@ git = "https://github.com/leanprover-community/mathlib4"
     @classmethod
     def _get_default_repl_exe_path(cls) -> Path:
         return cls._get_default_repl_path() / ".lake/build/bin/repl"
+
+
+@dataclass
+class LeanLibrary:
+    name: str
+    scope: str
+    # Note that the `git` attribute is only necessary for old lake versions.
+    git: str
+    rev: str | None = None
+
+    def with_(self, **changes):
+        return replace(self, **changes)
+
+
+class LeanLibraries:
+    MATHLIB = LeanLibrary(
+        name="mathlib",
+        scope="leanprover-community",
+        git="https://github.com/leanprover-community/mathlib4",
+    )

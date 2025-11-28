@@ -44,6 +44,7 @@ class LeanTacticBlock:
             span=FileSpan.deserialize(data["span"]),
         )
 
+# TODO: start_proof(env) method
 @dataclass(eq=False)
 class LeanTheorem:
     span: FileSpan
