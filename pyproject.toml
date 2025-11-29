@@ -26,6 +26,9 @@ scipy = ">=1.11.3"
 transformers = ">=4.36.0"
 datasets = ">=2.14.5"
 
+[tool.poetry.scripts]
+leanserver = "leantree.repl_adapter.start_server:main"
+
 [tool.poetry.build]
 script = "scripts/build_repl.py"
 
