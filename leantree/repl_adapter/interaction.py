@@ -104,6 +104,7 @@ class LeanProcess:
         assert self._proc is None
         cmd = ["lake", "env", str(self.repl_exe)]
 
+        self.logger.debug(f"Starting Lean REPL with command: {cmd} (working directory: {self.project_path})")
         self._proc = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=str(self.project_path),

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from leantree.repl_adapter.server import start_server
 from leantree.repl_adapter.process_pool import LeanProcessPool
+from leantree.utils import Logger, LogLevel
 
 
 def main():
@@ -29,7 +30,7 @@ def main():
         "--repl-exe",
         type=str,
         default=None,
-        help="Path to Lean REPL executable (default: from LEAN_REPL_EXE env or ../lean-repl/.lake/build/bin/repl)"
+        help="Path to Lean REPL executable (default: from LEAN_REPL_EXE)"
     )
     parser.add_argument(
         "--project-path",
@@ -59,8 +60,7 @@ def main():
     elif os.getenv("LEAN_REPL_EXE"):
         repl_exe = Path(os.getenv("LEAN_REPL_EXE"))
     else:
-        # Default relative to current working directory
-        repl_exe = Path("../lean-repl/.lake/build/bin/repl").resolve()
+        raise ValueError("REPL executable not specified")
 
     if not repl_exe.exists():
         print(f"Error: REPL executable not found at {repl_exe}", file=sys.stderr)
@@ -86,6 +86,7 @@ def main():
         repl_exe=repl_exe,
         project_path=project_path,
         max_processes=args.max_processes,
+        logger=Logger(LogLevel.DEBUG) if args.log_level == "DEBUG" else None,
     )
 
     # Start server
@@ -95,6 +96,8 @@ def main():
         port=args.port,
         log_level=args.log_level
     )
+    print(f"Lean project: {project_path}")
+    print(f"REPL executable: {repl_exe}")
     print(f"Server started on http://{args.address}:{args.port} with log level {args.log_level}")
 
     # Handle shutdown gracefully
