@@ -51,6 +51,12 @@ def main():
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Logging level (default: INFO)"
     )
+    parser.add_argument(
+        "--imports",
+        type=str,
+        nargs="*",
+        help="List of Lean packages to import"
+    )
 
     args = parser.parse_args()
 
@@ -82,11 +88,19 @@ def main():
         sys.exit(1)
 
     # Create process pool
+    env_setup_async = None
+    if args.imports:
+        async def setup_imports(process):
+            imports_str = "\n".join(f"import {imp}" for imp in args.imports)
+            await process.send_command_async(imports_str)
+        env_setup_async = setup_imports
+
     pool = LeanProcessPool(
         repl_exe=repl_exe,
         project_path=project_path,
         max_processes=args.max_processes,
         logger=Logger(LogLevel.DEBUG) if args.log_level == "DEBUG" else None,
+        env_setup_async=env_setup_async,
     )
 
     # Start server
@@ -98,6 +112,8 @@ def main():
     )
     print(f"Lean project: {project_path}")
     print(f"REPL executable: {repl_exe}")
+    if args.imports:
+        print(f"Importing packages: {", ".join(args.imports)}")
     print(f"Server started on http://{args.address}:{args.port} with log level {args.log_level}")
 
     # Handle shutdown gracefully
