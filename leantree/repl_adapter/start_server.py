@@ -43,6 +43,13 @@ def main():
         default=8,
         help="Maximum number of parallel processes (default: 2)"
     )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level (default: INFO)"
+    )
 
     args = parser.parse_args()
 
@@ -54,7 +61,7 @@ def main():
     else:
         # Default relative to current working directory
         repl_exe = Path("../lean-repl/.lake/build/bin/repl").resolve()
-    
+
     if not repl_exe.exists():
         print(f"Error: REPL executable not found at {repl_exe}", file=sys.stderr)
         print("Please specify --repl-exe or set LEAN_REPL_EXE environment variable", file=sys.stderr)
@@ -68,7 +75,7 @@ def main():
     else:
         # Default relative to current working directory
         project_path = Path("leantree_project").resolve()
-    
+
     if not project_path.exists():
         print(f"Error: Project path not found at {project_path}", file=sys.stderr)
         print("Please specify --project-path or set LEAN_PROJECT_PATH environment variable", file=sys.stderr)
@@ -82,9 +89,13 @@ def main():
     )
 
     # Start server
-    server = start_server(pool, address=args.address, port=args.port)
-    print(f"Server started on http://{args.address}:{args.port}")
-    print("Press Ctrl+C to stop")
+    server = start_server(
+        pool,
+        address=args.address,
+        port=args.port,
+        log_level=args.log_level
+    )
+    print(f"Server started on http://{args.address}:{args.port} with log level {args.log_level}")
 
     # Handle shutdown gracefully
     def signal_handler(sig, frame):
@@ -106,4 +117,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

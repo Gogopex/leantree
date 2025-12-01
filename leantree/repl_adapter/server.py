@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
@@ -16,12 +17,22 @@ from leantree.utils import serialize_exception, deserialize_exception
 class LeanServer:
     """Manages a LeanProcessPool and exposes it over a HTTP port."""
 
-    def __init__(self, pool: LeanProcessPool, address: str = "localhost", port: int = 8000):
+    def __init__(self, pool: LeanProcessPool, address: str = "localhost", port: int = 8000, log_level: str = "INFO"):
         self.pool = pool
         self.address = address
         self.port = port
+        self.log_level = log_level
         self.server = None
         self.server_thread = None
+
+        # Setup logger
+        self.logger = logging.getLogger("LeanServer")
+        self.logger.setLevel(log_level)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+            self.logger.addHandler(handler)
+
         self._process_id_counter = 0
         self._process_id_to_process = {}  # Maps process_id to LeanProcess
         self._process_to_id = {}  # Maps LeanProcess to process_id
@@ -104,12 +115,16 @@ class LeanServer:
 
         class LeanServerHandler(BaseHTTPRequestHandler):
             def do_GET(self):
+                server.logger.debug(f"GET request to {self.path} from {self.client_address}")
+
                 if self.path == "/status":
                     self._handle_status()
                 else:
                     self._send_error(404, "Not Found")
 
             def do_POST(self):
+                server.logger.debug(f"POST request to {self.path} from {self.client_address}")
+
                 if self.path == "/process/get":
                     self._handle_get_process()
                 elif self.path.startswith("/process/"):
@@ -396,10 +411,11 @@ class RemoteLeanProofBranch:
 def start_server(
         pool: LeanProcessPool,
         address: str = "localhost",
-        port: int = 8000
+        port: int = 8000,
+        log_level: str = "INFO"
 ) -> LeanServer:
     """Start a LeanServer with the given pool."""
-    server = LeanServer(pool, address, port)
+    server = LeanServer(pool, address, port, log_level)
     server.start()
     return server
 
