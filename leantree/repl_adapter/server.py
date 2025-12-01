@@ -8,10 +8,10 @@ from typing import Self
 import urllib.request
 import urllib.error
 
-from leantree.repl_adapter.interaction import LeanProcess, LeanProofBranch
+from leantree.repl_adapter.interaction import LeanProcess, LeanProofBranch, LeanInteractionException
 from leantree.repl_adapter.process_pool import LeanProcessPool
 from leantree.core.lean import LeanProofState, LeanTactic, LeanGoal
-from leantree.utils import serialize_exception, deserialize_exception
+from leantree.utils import serialize_exception, deserialize_exception, ValueOrError
 
 
 class LeanServer:
@@ -142,6 +142,8 @@ class LeanServer:
                             proof_state_id = int(parts[4])
                             if parts[5] == "apply_tactic":
                                 self._handle_apply_tactic(process_id, proof_state_id)
+                            elif parts[5] == "try_apply_tactic":
+                                self._handle_try_apply_tactic(process_id, proof_state_id)
                             elif parts[5] == "state":
                                 self._handle_proof_state(process_id, proof_state_id)
                             else:
@@ -249,6 +251,41 @@ class LeanServer:
                     self._send_json(200, response)
                 except Exception as e:
                     self._send_error(500, str(e), exception=e)
+
+            def _handle_try_apply_tactic(self, process_id: int, proof_state_id: int):
+                try:
+                    process = server._get_process(process_id)
+                    data = self._read_json()
+                    tactic = data["tactic"]
+
+                    # Create a minimal proof branch to apply tactic
+                    response_dict = server._run_async(process._send_to_repl_async({
+                        "tactic": tactic,
+                        "proofState": proof_state_id,
+                    }))
+
+                    step_error = LeanProofBranch.step_error_from_response(response_dict)
+                    if step_error:
+                        self._send_json(200, {"error": f"Step verification error: {step_error}"})
+                        return
+
+                    if "goals" not in response_dict:
+                        self._send_json(200, {"error": f"Could not apply tactic in REPL: {json.dumps(response_dict)}"})
+                        return
+
+                    # Extract goals and new proof state
+                    new_proof_state_id = response_dict.get("proofState")
+                    goals = LeanProcess._goals_from_response(response_dict)
+
+                    # Return a list of branches (simplified to 1 for now)
+                    branch_data = {
+                        "proof_state_id": new_proof_state_id,
+                        "goals": [goal.serialize() for goal in goals],
+                    }
+
+                    self._send_json(200, {"value": [branch_data]})
+                except Exception as e:
+                    self._send_json(200, {"error": str(e)})
 
             def _handle_proof_state(self, process_id: int, proof_state_id: int):
                 # This would need to track proof branches on the server
@@ -382,30 +419,40 @@ class RemoteLeanProofBranch:
         self._proof_state_id = proof_state_id
         self._goals = [LeanGoal.deserialize(g) for g in goals]
 
+    @property
     def state(self) -> LeanProofState:
         """Get the current proof state."""
         return LeanProofState(self._goals)
 
-    def apply_tactic(
+    def try_apply_tactic(
             self,
             tactic: LeanTactic | str,
             ban_search_tactics: bool = True,
-    ) -> list["RemoteLeanProofBranch"]:
+    ) -> ValueOrError[list["RemoteLeanProofBranch"]]:
         """Apply a tactic to the proof branch."""
         if isinstance(tactic, LeanTactic):
             tactic = tactic.tactic
 
         response = self.client._request(
             "POST",
-            f"/process/{self.process_id}/proof/{self._proof_state_id}/apply_tactic",
+            f"/process/{self.process_id}/proof/{self._proof_state_id}/try_apply_tactic",
             {"tactic": tactic}
         )
 
-        # Create new proof branches from the response
-        new_proof_state_id = response["proof_state_id"]
+        if "error" in response:
+            return ValueOrError.from_error(response["error"])
 
-        # For simplicity, return a single branch (in real implementation would handle multiple branches)
-        return [RemoteLeanProofBranch(self.client, self.process_id, new_proof_state_id, response["goals"])]
+        branches_data = response["value"]
+        branches = []
+        for branch_data in branches_data:
+            branches.append(RemoteLeanProofBranch(
+                self.client,
+                self.process_id,
+                branch_data["proof_state_id"],
+                branch_data["goals"]
+            ))
+
+        return ValueOrError.from_success(branches)
 
 
 def start_server(
