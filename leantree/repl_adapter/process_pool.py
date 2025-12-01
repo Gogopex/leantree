@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 from typing import Callable, Coroutine
 import psutil
-from leantree.repl_adapter.interaction import LeanProcess
+from leantree.repl_adapter.interaction import LeanProcess, LeanEnvironmentCheckpoint
 from leantree.utils import Logger, NullLogger, to_sync
 
 
@@ -43,6 +43,7 @@ class LeanProcessPool:
 
         # Pool state
         self.available_processes: list[LeanProcess] = []
+        self.checkpoints: dict[LeanProcess, LeanEnvironmentCheckpoint] = {}
         self._num_used_processes: int = 0
         self.lock = asyncio.Lock()  # Use asyncio.Lock instead of threading.RLock
         self.process_available_event = asyncio.Event()
@@ -64,6 +65,7 @@ class LeanProcessPool:
         await process.start_async()
         if self.env_setup_async:
             await self.env_setup_async(process)
+        self.checkpoints[process] = process.checkpoint()
         return process
 
     async def max_out_processes_async(self):
@@ -167,10 +169,13 @@ class LeanProcessPool:
 
             if should_terminate:
                 await process.stop_async()
+                self.checkpoints.pop(process, None)
                 process = None
 
             if process is not None:
                 await process.drain_repl_output_async()
+                if process in self.checkpoints:
+                    process.rollback_to(self.checkpoints[process])
 
             assert self._num_used_processes > 0, "No processes in use"
             self._num_used_processes -= 1
@@ -197,5 +202,6 @@ class LeanProcessPool:
                 except Exception as e:
                     self.logger.warning(f"Error shutting down process: {e}")
             self.available_processes = []
+            self.checkpoints.clear()
 
     shutdown = to_sync(shutdown_async)
