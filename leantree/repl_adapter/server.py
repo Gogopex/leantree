@@ -237,13 +237,18 @@ class LeanServer:
                     process = server._get_process(process_id)
                     data = self._read_json()
                     tactic = data["tactic"]
+                    timeout = data.get("timeout")
 
                     # Create a minimal proof branch to apply tactic
                     # In a real implementation, we'd track proof branches on the server
-                    response_dict = server._run_async(process._send_to_repl_async({
+                    payload = {
                         "tactic": tactic,
                         "proofState": proof_state_id,
-                    }))
+                    }
+                    if timeout is not None:
+                        payload["timeout"] = timeout
+
+                    response_dict = server._run_async(process._send_to_repl_async(payload))
 
                     # Extract goals and new proof state
                     new_proof_state_id = response_dict.get("proofState")
@@ -262,12 +267,17 @@ class LeanServer:
                     process = server._get_process(process_id)
                     data = self._read_json()
                     tactic = data["tactic"]
+                    timeout = data.get("timeout")
 
                     # Create a minimal proof branch to apply tactic
-                    response_dict = server._run_async(process._send_to_repl_async({
+                    payload = {
                         "tactic": tactic,
                         "proofState": proof_state_id,
-                    }))
+                    }
+                    if timeout is not None:
+                        payload["timeout"] = timeout
+
+                    response_dict = server._run_async(process._send_to_repl_async(payload))
 
                     step_error = LeanProofBranch.step_error_from_response(response_dict)
                     if step_error:
@@ -438,15 +448,20 @@ class RemoteLeanProofBranch:
             self,
             tactic: LeanTactic | str,
             ban_search_tactics: bool = True,
+            timeout: int | None = 1000,
     ) -> ValueOrError[list["RemoteLeanProofBranch"]]:
         """Apply a tactic to the proof branch."""
         if isinstance(tactic, LeanTactic):
             tactic = tactic.tactic
 
+        data = {"tactic": tactic}
+        if timeout is not None:
+            data["timeout"] = timeout
+
         response = self.client._request(
             "POST",
             f"/process/{self.process_id}/proof/{self._proof_state_id}/try_apply_tactic",
-            {"tactic": tactic}
+            data
         )
 
         if "error" in response:
