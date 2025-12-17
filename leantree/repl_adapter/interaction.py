@@ -218,6 +218,8 @@ class LeanProcess:
             raise LeanInteractionException(f"REPL returned error messages: {json.dumps(errors, ensure_ascii=False)}")
 
         message = response.get("message")
+        if message == "Operation timed out":
+            raise LeanInteractionException("Tactic application timed out.")
         if message and message.startswith("Lean error:"):
             raise LeanInteractionException(f"REPL returned error: {message}")
 
@@ -524,11 +526,15 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
     def is_solved(self) -> bool:
         return self.state.is_solved()
 
-    async def _send_tactic_async(self, tactic: str) -> dict:
-        response = await self._env._send_to_repl_async({
+    async def _send_tactic_async(self, tactic: str, timeout: int | None = 1000) -> dict:
+        data = {
             "tactic": tactic,
             "proofState": self._proof_state_id,
-        })
+        }
+        if timeout is not None:
+            data["timeout"] = timeout
+
+        response = await self._env._send_to_repl_async(data)
         return response
 
     async def _delete_masked_goals_async(self):
@@ -586,6 +592,7 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
             # example : 1 = 0 := by
             #   apply?
             ban_search_tactics: bool = True,
+            timeout: int | None = 1000,
     ) -> list[Self]:
         assert not self.state.is_solved(), "This proof branch is already solved."
         if isinstance(tactic, LeanTactic):
@@ -595,7 +602,7 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
         # Normalize the proof state by removing masked goals.
         await self._delete_masked_goals_async()
 
-        response = await self._send_tactic_async(tactic)
+        response = await self._send_tactic_async(tactic, timeout=timeout)
         if "goals" not in response:
             raise LeanInteractionException(f"Could not apply tactic in REPL: {json.dumps(response)}")
         new_proof_state = response["proofState"]
@@ -632,9 +639,9 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
 
     # TODO: def apply_tactics
 
-    async def try_apply_tactic_async(self, tactic: LeanTactic | str) -> ValueOrError[list[Self]]:
+    async def try_apply_tactic_async(self, tactic: LeanTactic | str, timeout: int | None = 1000) -> ValueOrError[list[Self]]:
         try:
-            return ValueOrError.from_success(await self.apply_tactic_async(tactic))
+            return ValueOrError.from_success(await self.apply_tactic_async(tactic, timeout=timeout))
         except (LeanInteractionException, AssertionError) as e:
             return ValueOrError.from_error(e)
 
