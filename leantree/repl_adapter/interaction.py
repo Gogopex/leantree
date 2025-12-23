@@ -541,11 +541,12 @@ class LeanProcess:
 
 class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
     def __init__(self, env: LeanProcess, proof_state_id: int, all_goals: list[LeanGoal] | LeanGoal,
-                 goals_mask: list[bool] = None):
+                 goals_mask: list[bool] = None, last_response: dict = None):
         self._env = env
         self._proof_state_id = proof_state_id
         self._all_goals = all_goals if isinstance(all_goals, list) else [all_goals]
         self._goals_mask = goals_mask
+        self._last_response = last_response
         assert self._goals_mask is None or len(self._all_goals) == len(self._goals_mask)
 
     def __str__(self):
@@ -560,6 +561,18 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
     @property
     def is_solved(self) -> bool:
         return self.state.is_solved()
+
+    def get_proof_term_json(self) -> dict | None:
+        if not self.is_solved:
+            return None
+        if self._last_response is None:
+            return None
+        return self._last_response.get("proofTerm")
+
+    def get_partial_proof_term_json(self) -> dict | None:
+        if self._last_response is None:
+            return None
+        return self._last_response.get("partialProofTerm")
 
     async def _send_tactic_async(self, tactic: str, timeout: int | None = 1000) -> dict:
         data = {
@@ -648,16 +661,24 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
         metavar_graph = MetavarGraph.from_dict(response["mctxAfter"])
 
         next_states = []
-        for branch_goals in metavar_graph.partition_independent_goals(new_goals):
+        if not new_goals:
             next_states.append(LeanProofBranch(
                 self._env,
                 new_proof_state,
-                new_goals,
-                goals_mask=[g in branch_goals for g in new_goals],
+                [],
+                goals_mask=None,
+                last_response=response,
             ))
+        else:
+            for branch_goals in metavar_graph.partition_independent_goals(new_goals):
+                next_states.append(LeanProofBranch(
+                    self._env,
+                    new_proof_state,
+                    new_goals,
+                    goals_mask=[g in branch_goals for g in new_goals],
+                    last_response=response,
+                ))
 
-        # `sorries` can be generated e.g. when executing a `have` tactic. They create an entirely new proofState with a
-        # single goal.
         for sorry_data in response.get("sorries", []):
             goal = ReplGoalInfo.goal_from_repl_data(sorry_data["goalInfo"])
             next_states.append(LeanProofBranch(self._env, sorry_data["proofState"], goal))
