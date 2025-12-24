@@ -351,6 +351,37 @@ class LeanProcess:
 
     unpickle = to_sync(unpickle_async)
 
+    async def check_def_eq_async(self, expr1_dag: dict, expr2_dag: dict) -> bool:
+        """Check if two expressions are definitionally equal using Lean kernel.
+
+        Args:
+            expr1_dag: ExprDAG.Json format dict for first expression
+            expr2_dag: ExprDAG.Json format dict for second expression
+
+        Returns:
+            True if expressions are definitionally equal, False otherwise.
+
+        Raises:
+            LeanInteractionException: If the check fails or env is not set.
+        """
+        self._assert_started()
+        if self._env_id is None:
+            raise LeanInteractionException("No environment set. Send a command first.")
+
+        data = {
+            "env": self._env_id,
+            "expr1": expr1_dag,
+            "expr2": expr2_dag,
+        }
+        response = await self._send_to_repl_async(data)
+
+        if "error" in response and response["error"]:
+            raise LeanInteractionException(f"DefEq check failed: {response['error']}")
+
+        return response.get("isDefEq", False)
+
+    check_def_eq = to_sync(check_def_eq_async)
+
     def _assert_started(self):
         if self._proc is None:
             raise Exception(
