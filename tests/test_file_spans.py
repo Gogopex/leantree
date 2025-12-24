@@ -35,6 +35,7 @@ protected theorem Commute.mul_geom_sum₂_Ico [Ring α] {x y : α} (h : Commute 
     sub_sub_sub_cancel_right (x ^ n) (x ^ m * y ^ (n - m)) (y ^ n)]
 """
 
+
 def test_merge_and_replace():
     by_block = """
         refine sum_congr rfl fun j j_in => ?_

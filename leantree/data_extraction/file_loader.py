@@ -1,5 +1,7 @@
 class LeanFileLoader:
-    def load_file(self, path: Path, verbose: bool = False, use_repl_cache: bool = True) -> tuple[LeanFile, list[str]]:
+    def load_file(
+        self, path: Path, verbose: bool = False, use_repl_cache: bool = True
+    ) -> tuple[LeanFile, list[str]]:
         assert path.is_file()
         assert str(path).endswith(".lean")
 
@@ -14,14 +16,24 @@ class LeanFileLoader:
             try:
                 self._check_if_unit_supported(unit)
             except AssertionError as e:
-                e.args += ("some features not supported yet", f"in file: {path}", f"in unit:\n'{unit.pretty_print}'")
+                e.args += (
+                    "some features not supported yet",
+                    f"in file: {path}",
+                    f"in unit:\n'{unit.pretty_print}'",
+                )
                 failed_theorems.append("\n".join(str(arg) for arg in e.args))
                 continue
 
             try:
-                trees = self._create_proof_trees(unit.proof_steps, create_file_span, verbose=verbose)
+                trees = self._create_proof_trees(
+                    unit.proof_steps, create_file_span, verbose=verbose
+                )
             except AssertionError as e:
-                e.args += ("during proof tree creation", f"in file: {path}", f"in unit:\n'{unit.pretty_print}'")
+                e.args += (
+                    "during proof tree creation",
+                    f"in file: {path}",
+                    f"in unit:\n'{unit.pretty_print}'",
+                )
                 failed_theorems.append("\n".join(str(arg) for arg in e.args))
                 continue
 
@@ -45,7 +57,11 @@ class LeanFileLoader:
                 for t in trees:
                     postprocessor.transform_proof_tree(t)
             except AssertionError as e:
-                e.args += ("during proof tree transformation", f"in file: {path}", f"in unit:\n'{unit.pretty_print}'")
+                e.args += (
+                    "during proof tree transformation",
+                    f"in file: {path}",
+                    f"in unit:\n'{unit.pretty_print}'",
+                )
                 failed_theorems.append("\n".join(str(arg) for arg in e.args))
                 continue
 

@@ -24,6 +24,7 @@ from leantree.utils import Logger, LogLevel
 
 # TODO: project.load_theorem reports errors differently from project.load_file
 
+
 def create_environment(project: LeanProject, header: str) -> Any:
     """Create a new environment and initialize it with the header"""
     # env = project.environment(repl_path, Logger(LogLevel.DEBUG)).__enter__()
@@ -34,12 +35,7 @@ def create_environment(project: LeanProject, header: str) -> Any:
 
 
 def process_theorem(
-        project: LeanProject,
-        env: Any,
-        name: str,
-        statement: str,
-        proof: str,
-        timeout: int
+    project: LeanProject, env: Any, name: str, statement: str, proof: str, timeout: int
 ) -> tuple[LeanTheorem | None, str | None]:
     """Process a single theorem, using utils.timeout for timeouts."""
     full_theorem = f"{statement}{proof}"
@@ -74,7 +70,7 @@ def write_error(sample: dict, error: str, err_file):
         "header": sample["header"],
         "statement": sample["formal_statement"],
         "proof": sample["formal_proof"],
-        "error": error
+        "error": error,
     }
     json.dump(error_record, err_file, ensure_ascii=False)
     err_file.write("\n")
@@ -88,7 +84,7 @@ def is_skipped_theorem(error: str) -> bool:
     prefix = "REPL returned error messages: "
     if not error.startswith(prefix):
         return False
-    json_str = error[len(prefix):]
+    json_str = error[len(prefix) :]
 
     try:
         messages = json.loads(json_str)
@@ -99,7 +95,9 @@ def is_skipped_theorem(error: str) -> bool:
 
     # Check all error messages are "unknown identifier"
     for msg in messages:
-        if msg.get("severity") == "error" and not msg.get("data", "").startswith("unknown identifier"):
+        if msg.get("severity") == "error" and not msg.get("data", "").startswith(
+            "unknown identifier"
+        ):
             return False
 
     return True
@@ -108,16 +106,30 @@ def is_skipped_theorem(error: str) -> bool:
 def main():
     parser = argparse.ArgumentParser(description="Extract and process DeepSeek Prover dataset")
     parser.add_argument("output", type=Path, help="Output JSONL file path")
-    parser.add_argument("--repl_path", type=Path, required=True, help="Path to Lean REPL executable")
+    parser.add_argument(
+        "--repl_path", type=Path, required=True, help="Path to Lean REPL executable"
+    )
     parser.add_argument("--project_path", type=Path, required=True, help="Path to Lean project")
-    parser.add_argument("--max_env_steps", type=int, default=100,
-                        help="Maximum number of theorems to process before recreating environment")
+    parser.add_argument(
+        "--max_env_steps",
+        type=int,
+        default=100,
+        help="Maximum number of theorems to process before recreating environment",
+    )
     parser.add_argument("--force", action="store_true", help="Overwrite output files if they exist")
-    parser.add_argument("--dataset", type=str, default="deepseek-ai/DeepSeek-Prover-V1",
-                        help="HuggingFace dataset name")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="deepseek-ai/DeepSeek-Prover-V1",
+        help="HuggingFace dataset name",
+    )
     parser.add_argument("--only", nargs="+", help="Only process theorems with these names")
-    parser.add_argument("--timeout", type=int, default=10,
-                        help="Timeout in seconds for load_theorem; 0 = no timeout")
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=10,
+        help="Timeout in seconds for load_theorem; 0 = no timeout",
+    )
     args = parser.parse_args()
 
     output_path = args.output
@@ -164,14 +176,17 @@ def main():
                         continue
 
                 # Check if we need to create new environment
-                if (env is None or
-                        sample["header"] != current_header or
-                        env_steps >= args.max_env_steps):
+                if (
+                    env is None
+                    or sample["header"] != current_header
+                    or env_steps >= args.max_env_steps
+                ):
                     restart_env()
                 print(sample["name"])
                 try:
                     theorem, error = process_theorem(
-                        project, env,
+                        project,
+                        env,
                         sample["name"],
                         sample["formal_statement"],
                         sample["formal_proof"],
@@ -229,10 +244,10 @@ def main():
     # Print final statistics
     print(f"\n* Final results *")
     print(f"Total samples:  {total}")
-    print(f"Successful:     {successful} ({(successful/total)*100:.2f}%)")
-    print(f"Skipped:        {skipped} ({(skipped/total)*100:.2f}%)")
-    print(f"Timed out:      {timed_out} ({(timed_out/total)*100:.2f}%)")
-    print(f"Failed:         {failed} ({(failed/total)*100:.2f}%)")
+    print(f"Successful:     {successful} ({(successful / total) * 100:.2f}%)")
+    print(f"Skipped:        {skipped} ({(skipped / total) * 100:.2f}%)")
+    print(f"Timed out:      {timed_out} ({(timed_out / total) * 100:.2f}%)")
+    print(f"Failed:         {failed} ({(failed / total) * 100:.2f}%)")
 
 
 if __name__ == "__main__":

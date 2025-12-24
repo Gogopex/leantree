@@ -296,6 +296,7 @@ async def test_concurrent_operations(project_path: Path):
         max_processes=2,
     )
     try:
+
         async def use_process(task_id: int):
             async with await pool.get_process_async() as process:
                 await process.send_command_async(f"#check Nat")
@@ -347,12 +348,14 @@ async def run_all_tests():
             print(f"\n❌ {test_name} failed with assertion error:")
             print(f"   {e}")
             import traceback
+
             traceback.print_exc()
             return 1
         except Exception as e:
             print(f"\n❌ {test_name} failed with error:")
             print(f"   {e}")
             import traceback
+
             traceback.print_exc()
             return 1
 

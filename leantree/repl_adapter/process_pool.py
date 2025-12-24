@@ -17,13 +17,13 @@ class LeanProcessPool:
     """
 
     def __init__(
-            self,
-            repl_exe: Path,
-            project_path: Path,
-            max_processes: int,
-            max_memory_utilization: float = 80.0,  # percentage
-            env_setup_async: Callable[[LeanProcess], Coroutine] | None = None,
-            logger: Logger | None = None,
+        self,
+        repl_exe: Path,
+        project_path: Path,
+        max_processes: int,
+        max_memory_utilization: float = 80.0,  # percentage
+        env_setup_async: Callable[[LeanProcess], Coroutine] | None = None,
+        logger: Logger | None = None,
     ):
         """
         Initialize the process pool.
@@ -50,7 +50,9 @@ class LeanProcessPool:
         self.env_setup_async = env_setup_async
         # Calculate memory threshold per server based on total system memory
         total_memory = psutil.virtual_memory().total
-        self.memory_threshold_per_process = int(total_memory * (self.max_memory_utilization / 100) / self.max_processes)
+        self.memory_threshold_per_process = int(
+            total_memory * (self.max_memory_utilization / 100) / self.max_processes
+        )
 
         self._was_shutdown = False
 
@@ -71,12 +73,14 @@ class LeanProcessPool:
     async def max_out_processes_async(self):
         """
         Start processes in parallel until we reach max_processes capacity.
-        
-        This method ensures that len(self.available_processes) + self._num_used_processes 
+
+        This method ensures that len(self.available_processes) + self._num_used_processes
         equals self.max_processes by starting new processes in parallel.
         """
         async with self.lock:
-            processes_to_start = self.max_processes - (len(self.available_processes) + self._num_used_processes)
+            processes_to_start = self.max_processes - (
+                len(self.available_processes) + self._num_used_processes
+            )
             if processes_to_start <= 0:
                 return
 
@@ -92,7 +96,8 @@ class LeanProcessPool:
                 self.process_available_event.set()
 
             self.logger.info(
-                f"Started {len(new_processes)} processes. Available: {len(self.available_processes)}, Used: {self._num_used_processes}")
+                f"Started {len(new_processes)} processes. Available: {len(self.available_processes)}, Used: {self._num_used_processes}"
+            )
 
     async def get_process_async(self, blocking: bool = True) -> LeanProcess | None:
         """
@@ -157,7 +162,10 @@ class LeanProcessPool:
             else:
                 try:
                     memory_usage = process.virtual_memory_usage()
-                    if self.memory_threshold_per_process and memory_usage > self.memory_threshold_per_process:
+                    if (
+                        self.memory_threshold_per_process
+                        and memory_usage > self.memory_threshold_per_process
+                    ):
                         self.logger.debug(
                             f"Process memory usage ({memory_usage / (1024 * 1024):.2f} MB) exceeds threshold "
                             f"({self.memory_threshold_per_process / (1024 * 1024):.2f} MB). Terminating."

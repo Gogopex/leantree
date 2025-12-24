@@ -23,8 +23,9 @@ def get_project_path():
 def get_free_port():
     """Get a free port for testing."""
     import socket
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         s.listen(1)
         port = s.getsockname()[1]
     return port
@@ -420,7 +421,7 @@ async def test_process_reuse(project_path: Path):
             # In the current implementation, return_process doesn't kill the process, just returns it to the pool.
             # But if the pool decided to restart it (e.g. due to memory usage), this test would fail.
             # For now, let's just check that we got a process back.
-            
+
             # Let's redefine it just in case, to ensure the process is working
             process2.send_command("def test_reuse_2 := 100")
             response = process2.send_command("#check test_reuse_2")
@@ -458,11 +459,12 @@ async def test_error_handling(project_path: Path):
             # Try to send command to non-existent process
             import urllib.request
             import json
+
             req = urllib.request.Request(
                 f"http://localhost:{port}/process/999/command",
                 data=json.dumps({"command": "#check Nat"}).encode("utf-8"),
                 headers={"Content-Type": "application/json"},
-                method="POST"
+                method="POST",
             )
             urllib.request.urlopen(req)
             assert False, "Should have raised an error"
@@ -573,12 +575,14 @@ async def run_all_tests():
             print(f"\n❌ {test_name} failed with assertion error:")
             print(f"   {e}")
             import traceback
+
             traceback.print_exc()
             return 1
         except Exception as e:
             print(f"\n❌ {test_name} failed with error:")
             print(f"   {e}")
             import traceback
+
             traceback.print_exc()
             return 1
 

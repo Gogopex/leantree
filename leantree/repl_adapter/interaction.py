@@ -15,14 +15,26 @@ from leantree.core.lean import LeanGoal, LeanTactic, LeanProofState
 from leantree.core.lean_file import LeanTheorem, LeanFile, StoredError
 from leantree.file_span import FilePosition, FileSpan
 from leantree.metavar_graph import MetavarGraph
-from leantree.repl_adapter.data import ReplGoalInfo, ReplCompilationUnit, FilePositionParser, ReplProofStepInfo
-from leantree.utils import is_just_comments, ValueOrError, get_source_with_sorries, to_sync, to_sync_iterator
+from leantree.repl_adapter.data import (
+    ReplGoalInfo,
+    ReplCompilationUnit,
+    FilePositionParser,
+    ReplProofStepInfo,
+)
+from leantree.utils import (
+    is_just_comments,
+    ValueOrError,
+    get_source_with_sorries,
+    to_sync,
+    to_sync_iterator,
+)
 
 
 # TODO!: maybe not all sorries are reported: see https://github.com/leanprover-community/repl/issues/4
 #  E.g. in: `simpa using sorry`, the sorry is not detected
 
 # TODO: add some way to flush envIds and proofIds - maybe take inspiration from the itp-interface project
+
 
 @dataclass
 class RunnableUnit:
@@ -59,15 +71,19 @@ class RunnableFile:
             #
             # `(E.IsSolution fun n => q ^ n) ↔ IsRoot (@LinearRecurrence.charPoly α inst✝ E) q`
             before_theorem = FileSpan(curr_position, thm.span.start)
-            units.append(RunnableUnit(
-                span=before_theorem,
-            ))
+            units.append(
+                RunnableUnit(
+                    span=before_theorem,
+                )
+            )
 
-            units.append(RunnableUnit(
-                span=thm.span,
-                proof_mask=[block.span for block in thm.by_blocks],
-                theorem=thm,
-            ))
+            units.append(
+                RunnableUnit(
+                    span=thm.span,
+                    proof_mask=[block.span for block in thm.by_blocks],
+                    theorem=thm,
+                )
+            )
 
             curr_position = thm.span.finish
         return RunnableFile(
@@ -87,11 +103,13 @@ class PickledEnv:
 
 
 # TODO: maybe replace with `print axioms` to also catch `apply?`/`admit`
-_eq_sorry_pattern = re.compile(r'\b:=\s*sorry\b')
+_eq_sorry_pattern = re.compile(r"\b:=\s*sorry\b")
 
 
 class LeanProcess:
-    def __init__(self, repl_exe: Path, project_path: Path, logger: utils.Logger = None, pool: Any = None):
+    def __init__(
+        self, repl_exe: Path, project_path: Path, logger: utils.Logger = None, pool: Any = None
+    ):
         self.repl_exe = repl_exe
         self.project_path = project_path
         self.logger = logger if logger else utils.NullLogger()
@@ -109,7 +127,7 @@ class LeanProcess:
                 line = await self._proc.stderr.readline()
                 if not line:
                     break
-                decoded_line = line.decode('utf-8', errors='replace').strip()
+                decoded_line = line.decode("utf-8", errors="replace").strip()
                 if decoded_line:
                     self._stderr_buffer.append(decoded_line)
                     # Also log to debug so it's not lost if not an error
@@ -123,7 +141,9 @@ class LeanProcess:
         self._stderr_buffer.clear()
         cmd = ["lake", "env", str(self.repl_exe)]
 
-        self.logger.debug(f"Starting Lean REPL with command: {cmd} (working directory: {self.project_path})")
+        self.logger.debug(
+            f"Starting Lean REPL with command: {cmd} (working directory: {self.project_path})"
+        )
         self._proc = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=str(self.project_path),
@@ -216,7 +236,7 @@ class LeanProcess:
 
         self.logger.debug(f"Sending to REPL: '{serialized[:-2]}'")
         try:
-            self._proc.stdin.write(serialized.encode('utf-8'))
+            self._proc.stdin.write(serialized.encode("utf-8"))
             await self._proc.stdin.drain()
 
             response_lines = []
@@ -226,7 +246,7 @@ class LeanProcess:
                     # EOF.
                     raise LeanProcessException("Lean REPL process ended unexpectedly")
 
-                decoded_line = line.decode('utf-8')
+                decoded_line = line.decode("utf-8")
                 if decoded_line.strip() == "":
                     # Empty line marks end of response.
                     break
@@ -241,9 +261,15 @@ class LeanProcess:
         messages = response.get("messages", [])
         errors = [m for m in messages if m["severity"] == "error"]
         # TODO: handle warnings
-        warnings = [m for m in messages if m["severity"] == "warning" and m["data"] != "declaration uses 'sorry'"]
+        warnings = [
+            m
+            for m in messages
+            if m["severity"] == "warning" and m["data"] != "declaration uses 'sorry'"
+        ]
         if len(errors) > 0:
-            raise LeanInteractionException(f"REPL returned error messages: {json.dumps(errors, ensure_ascii=False)}")
+            raise LeanInteractionException(
+                f"REPL returned error messages: {json.dumps(errors, ensure_ascii=False)}"
+            )
 
         message = response.get("message")
         if message == "Operation timed out":
@@ -288,7 +314,9 @@ class LeanProcess:
         except json.JSONDecodeError:
             self.logger.debug(f"Received from REPL (could not parse): '{response_str}'")
 
-    async def send_command_async(self, command: str, proof_trees: bool = False, info_trees: bool = False) -> dict:
+    async def send_command_async(
+        self, command: str, proof_trees: bool = False, info_trees: bool = False
+    ) -> dict:
         """Send a command to the REPL asynchronously and return the response."""
         self._assert_started()
 
@@ -395,12 +423,16 @@ class LeanProcess:
                 "Use 'with LeanProcess(...) as env:' or 'async with LeanProcess(...) as env:'"
             )
 
-    async def proofs_from_sorries_async(self, theorem_with_sorries: str) -> "AsyncIterator[LeanProofBranch]":
+    async def proofs_from_sorries_async(
+        self, theorem_with_sorries: str
+    ) -> "AsyncIterator[LeanProofBranch]":
         """Start proofs from sorries asynchronously."""
         self._assert_started()
         response = await self.send_command_async(theorem_with_sorries)
         if "sorries" not in response:
-            raise Exception(f"No `sorries` in REPL response. Make sure your theorem contains a 'sorry' keyword.")
+            raise Exception(
+                f"No `sorries` in REPL response. Make sure your theorem contains a 'sorry' keyword."
+            )
         sorries = response["sorries"]
         goals = [ReplGoalInfo.goal_from_repl_data(sorry_data["goalInfo"]) for sorry_data in sorries]
         for sorry_data, goal in zip(sorries, goals):
@@ -418,11 +450,13 @@ class LeanProcess:
     proof_from_sorry = to_sync(proof_from_sorry_async)
 
     async def file_proofs_async(
-            self,
-            file: LeanFile,
+        self,
+        file: LeanFile,
     ) -> "AsyncIterator[tuple[LeanTheorem, list[LeanProofBranch] | Exception]]":
         """Start file proofs asynchronously."""
-        async for unit, sorry_branches in self.runnable_proofs_async(RunnableFile.from_lean_file(file)):
+        async for unit, sorry_branches in self.runnable_proofs_async(
+            RunnableFile.from_lean_file(file)
+        ):
             if isinstance(sorry_branches, Exception):
                 yield unit.theorem, sorry_branches
                 continue
@@ -433,8 +467,8 @@ class LeanProcess:
     file_proofs = to_sync_iterator(file_proofs_async)
 
     async def runnable_proofs_async(
-            self,
-            file: RunnableFile,
+        self,
+        file: RunnableFile,
     ) -> "AsyncIterator[tuple[RunnableUnit, list[LeanProofBranch] | Exception]]":
         """Start runnable proofs asynchronously."""
         self._assert_started()
@@ -449,7 +483,9 @@ class LeanProcess:
 
             if unit.proof_mask:
                 try:
-                    source_with_sorries = get_source_with_sorries(unit.span, unit.proof_mask, file_content=file_content)
+                    source_with_sorries = get_source_with_sorries(
+                        unit.span, unit.proof_mask, file_content=file_content
+                    )
                     response = await self.send_command_async(source_with_sorries)
                 except (AssertionError, LeanInteractionException) as e:
                     yield unit, e
@@ -461,14 +497,19 @@ class LeanProcess:
             sorry_branches = []
             if "sorries" in response:
                 sorries = response["sorries"]
-                goals = [ReplGoalInfo.goal_from_repl_data(sorry_data["goalInfo"]) for sorry_data in sorries]
+                goals = [
+                    ReplGoalInfo.goal_from_repl_data(sorry_data["goalInfo"])
+                    for sorry_data in sorries
+                ]
                 for sorry_data, goal in zip(sorries, goals):
                     sorry_branches.append(LeanProofBranch(self, sorry_data["proofState"], goal))
             yield unit, sorry_branches
 
     runnable_proofs = to_sync_iterator(runnable_proofs_async)
 
-    async def full_proofs_async(self, file: LeanFile) -> "AsyncIterator[tuple[LeanTheorem, LeanProofBranch]]":
+    async def full_proofs_async(
+        self, file: LeanFile
+    ) -> "AsyncIterator[tuple[LeanTheorem, LeanProofBranch]]":
         """Start full proofs asynchronously."""
         pass  # TODO: Implement this method
 
@@ -498,7 +539,7 @@ class LeanProcess:
                 user_input = await loop.run_in_executor(None, input)
                 if not user_input:
                     break
-                self._proc.stdin.write((user_input + "\n").encode('utf-8'))
+                self._proc.stdin.write((user_input + "\n").encode("utf-8"))
                 await self._proc.stdin.drain()
         except (EOFError, BrokenPipeError, KeyboardInterrupt):
             print("User interrupted input or pipe broken. Exiting control mode.")
@@ -571,8 +612,14 @@ class LeanProcess:
 
 
 class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
-    def __init__(self, env: LeanProcess, proof_state_id: int, all_goals: list[LeanGoal] | LeanGoal,
-                 goals_mask: list[bool] = None, last_response: dict = None):
+    def __init__(
+        self,
+        env: LeanProcess,
+        proof_state_id: int,
+        all_goals: list[LeanGoal] | LeanGoal,
+        goals_mask: list[bool] = None,
+        last_response: dict = None,
+    ):
         self._env = env
         self._proof_state_id = proof_state_id
         self._all_goals = all_goals if isinstance(all_goals, list) else [all_goals]
@@ -587,7 +634,9 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
     def state(self) -> LeanProofState:
         if self._goals_mask is None:
             return LeanProofState([goal for goal in self._all_goals])
-        return LeanProofState([goal for goal, visible in zip(self._all_goals, self._goals_mask) if visible])
+        return LeanProofState(
+            [goal for goal, visible in zip(self._all_goals, self._goals_mask) if visible]
+        )
 
     @property
     def is_solved(self) -> bool:
@@ -664,14 +713,14 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
         self._goals_mask = None
 
     async def apply_tactic_async(
-            self,
-            tactic: LeanTactic | str,
-            # Tactics rw?, apply?, exact? technically close the main goal, but the proof is invalid. Setting
-            # ban_search_tactics disallows these. Consider e.g.:
-            # example : 1 = 0 := by
-            #   apply?
-            ban_search_tactics: bool = True,
-            timeout: int | None = 1000,
+        self,
+        tactic: LeanTactic | str,
+        # Tactics rw?, apply?, exact? technically close the main goal, but the proof is invalid. Setting
+        # ban_search_tactics disallows these. Consider e.g.:
+        # example : 1 = 0 := by
+        #   apply?
+        ban_search_tactics: bool = True,
+        timeout: int | None = 1000,
     ) -> list[Self]:
         assert not self.state.is_solved(), "This proof branch is already solved."
         if isinstance(tactic, LeanTactic):
@@ -683,7 +732,9 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
 
         response = await self._send_tactic_async(tactic, timeout=timeout)
         if "goals" not in response:
-            raise LeanInteractionException(f"Could not apply tactic in REPL: {json.dumps(response)}")
+            raise LeanInteractionException(
+                f"Could not apply tactic in REPL: {json.dumps(response)}"
+            )
         new_proof_state = response["proofState"]
         step_error = self.step_error_from_response(response)
         if step_error:
@@ -693,22 +744,26 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
 
         next_states = []
         if not new_goals:
-            next_states.append(LeanProofBranch(
-                self._env,
-                new_proof_state,
-                [],
-                goals_mask=None,
-                last_response=response,
-            ))
-        else:
-            for branch_goals in metavar_graph.partition_independent_goals(new_goals):
-                next_states.append(LeanProofBranch(
+            next_states.append(
+                LeanProofBranch(
                     self._env,
                     new_proof_state,
-                    new_goals,
-                    goals_mask=[g in branch_goals for g in new_goals],
+                    [],
+                    goals_mask=None,
                     last_response=response,
-                ))
+                )
+            )
+        else:
+            for branch_goals in metavar_graph.partition_independent_goals(new_goals):
+                next_states.append(
+                    LeanProofBranch(
+                        self._env,
+                        new_proof_state,
+                        new_goals,
+                        goals_mask=[g in branch_goals for g in new_goals],
+                        last_response=response,
+                    )
+                )
 
         for sorry_data in response.get("sorries", []):
             goal = ReplGoalInfo.goal_from_repl_data(sorry_data["goalInfo"])
@@ -726,7 +781,9 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
 
     # TODO: def apply_tactics
 
-    async def try_apply_tactic_async(self, tactic: LeanTactic | str, timeout: int | None = 1000) -> ValueOrError[list[Self]]:
+    async def try_apply_tactic_async(
+        self, tactic: LeanTactic | str, timeout: int | None = 1000
+    ) -> ValueOrError[list[Self]]:
         try:
             return ValueOrError.from_success(await self.apply_tactic_async(tactic, timeout=timeout))
         except (LeanInteractionException, AssertionError) as e:
@@ -746,7 +803,9 @@ class LeanProofBranch(ProofBranch[LeanGoal, LeanTactic]):
             raise LeanInteractionException("`sorry` not allowed in `simpa`")
         # TODO: a better solution would be to report the `sorry` introduced by `apply?` and allow it (it seems that
         #  apply? creates a sorry internally)
-        if ban_search_tactics and any(tactic.startswith(banned) for banned in ["apply?", "rw?", "exact?"]):
+        if ban_search_tactics and any(
+            tactic.startswith(banned) for banned in ["apply?", "rw?", "exact?"]
+        ):
             raise LeanInteractionException("Search tactics (apply?, rw?, exact?) are not allowed.")
 
     @classmethod

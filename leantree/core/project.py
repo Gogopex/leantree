@@ -17,12 +17,12 @@ from leantree.repl_adapter.singleton_trees import SingletonTreeBuilder
 
 class LeanProject:
     def __init__(
-            self,
-            path: Path | str | None = None,
-            *,
-            repl_path: Path | str | None = None,
-            create: bool = False,
-            logger: utils.Logger | None = None,
+        self,
+        path: Path | str | None = None,
+        *,
+        repl_path: Path | str | None = None,
+        create: bool = False,
+        logger: utils.Logger | None = None,
     ):
         self.path = Path(path) if path else Path("leantree_project")
         if not self.path.exists():
@@ -44,9 +44,9 @@ class LeanProject:
         return LeanProcess(self.repl_path, self.path, self.logger)
 
     def load_theorem(
-            self,
-            theorem: str,
-            env: LeanProcess,
+        self,
+        theorem: str,
+        env: LeanProcess,
     ) -> LeanTheorem:
         checkpoint = env.checkpoint()
         loaded_unit = env.send_theorem(theorem)
@@ -60,10 +60,10 @@ class LeanProject:
         return result
 
     def load_file(
-            self,
-            path: Path | str,
-            use_cache: bool = True,
-            store_assertion_errors: bool = True,
+        self,
+        path: Path | str,
+        use_cache: bool = True,
+        store_assertion_errors: bool = True,
     ) -> LeanFile:
         path = Path(path).absolute()
         assert path.is_file()
@@ -149,14 +149,14 @@ class LeanProject:
     # TODO: user should be able to choose which libraries get included
     @classmethod
     def create(
-            cls,
-            path: Path | str | None = None,
-            lean_version: str | None = "v4.19.0",
-            *,
-            repl_path: Path | str | None = None,
-            logger: utils.Logger | None = None,
-            suppress_output: bool = False,
-            libraries: "list[LeanLibrary | str] | None" = None,
+        cls,
+        path: Path | str | None = None,
+        lean_version: str | None = "v4.19.0",
+        *,
+        repl_path: Path | str | None = None,
+        logger: utils.Logger | None = None,
+        suppress_output: bool = False,
+        libraries: "list[LeanLibrary | str] | None" = None,
     ) -> Self:
         if path is None:
             path = "leantree_project"
@@ -190,9 +190,7 @@ class LeanProject:
             else:
                 result = subprocess.run(args, cwd=path)
                 if result.returncode != 0:
-                    raise RuntimeError(
-                        f"Command {args} failed with code {result.returncode}"
-                    )
+                    raise RuntimeError(f"Command {args} failed with code {result.returncode}")
 
         if lean_version:
             # The lean-toolchain file has to be present before running lake, so that the correct version of lake does
@@ -205,7 +203,10 @@ class LeanProject:
         run_command(["lake", "init", ".", "lib.toml"])
 
         libraries = libraries or []
-        libraries = [LeanLibraries.from_name(library) if isinstance(library, str) else library for library in libraries]
+        libraries = [
+            LeanLibraries.from_name(library) if isinstance(library, str) else library
+            for library in libraries
+        ]
         require_blocks = []
         for library in libraries:
             if library.name == "mathlib" and library.rev is None and lean_version:
@@ -219,12 +220,14 @@ scope = "{library.scope}"
 git = "{library.git}"
             """.strip()
             if library.rev:
-                block += f"\nrev = \"{library.rev}\""
+                block += f'\nrev = "{library.rev}"'
             require_blocks.append(block)
 
         if require_blocks:
             lakefile = path / "lakefile.toml"
-            lakefile_text = lakefile.read_text().strip() + "\n\n" + "\n\n".join(require_blocks) + "\n"
+            lakefile_text = (
+                lakefile.read_text().strip() + "\n\n" + "\n\n".join(require_blocks) + "\n"
+            )
             lakefile.write_text(lakefile_text)
 
         # Note: We could disable automatic toolchain updates with --keep-toolchain, but that is not available in old
@@ -241,7 +244,8 @@ git = "{library.git}"
         repl_path = Path(repl_path)
         if not repl_path.exists():
             raise Exception(
-                f"REPL executable does not exist: {repl_path}.\nPlease run `lake build` in: {cls._get_default_repl_path()}")
+                f"REPL executable does not exist: {repl_path}.\nPlease run `lake build` in: {cls._get_default_repl_path()}"
+            )
         return repl_path
 
     @classmethod

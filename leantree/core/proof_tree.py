@@ -80,16 +80,12 @@ class ProofTreeNode:
     @cached_property
     def proof_size(self) -> int:
         assert self.tactic is not None
-        return 1 + sum(
-            child.proof_size for child in self.tactic.children
-        )
+        return 1 + sum(child.proof_size for child in self.tactic.children)
 
     @cached_property
     def proof_depth(self) -> int:
         assert self.tactic is not None
-        return 1 + max(
-            [0] + [child.proof_depth for child in self.tactic.children]
-        )
+        return 1 + max([0] + [child.proof_depth for child in self.tactic.children])
 
     # TODO
     # def proof_runtime(self):
@@ -107,15 +103,10 @@ class ProofTreeNode:
         return nodes
 
     def is_solved(self) -> bool:
-        return self.tactic is not None and all(
-            child.is_solved() for child in self.tactic.children
-        )
+        return self.tactic is not None and all(child.is_solved() for child in self.tactic.children)
 
     def serialize(self) -> dict:
-        data = {
-            "id": self.id,
-            "state": self.state.serialize()
-        }
+        data = {"id": self.id, "state": self.state.serialize()}
         if self.tactic is not None:
             data = {
                 **data,
@@ -127,11 +118,11 @@ class ProofTreeNode:
 
     @classmethod
     def deserialize(
-            cls, data: dict, including_edges=False, all_nodes: dict[str, Self] | None = None
+        cls, data: dict, including_edges=False, all_nodes: dict[str, Self] | None = None
     ) -> Self:
         result = ProofTreeNode(
             id=data["id"],
-            state= LeanProofState.deserialize(data["state"]),
+            state=LeanProofState.deserialize(data["state"]),
         )
         if including_edges:
             result.deserialize_edges(data, all_nodes)
@@ -197,8 +188,12 @@ class ProofTree:
                     return "UNEXPANDED"
                 return "■" if len(node.children) == 0 else " "
             assert isinstance(node, ProofTreeNode)
-            descriptor = node.id + "\n" + "\n".join(
-                f"{goal.tag + ": " if goal.tag else ""}{goal.type}" for goal in node.state.goals
+            descriptor = (
+                node.id
+                + "\n"
+                + "\n".join(
+                    f"{goal.tag + ': ' if goal.tag else ''}{goal.type}" for goal in node.state.goals
+                )
             )
             if node.is_solved():
                 return f"({node.proof_size}) {descriptor}"

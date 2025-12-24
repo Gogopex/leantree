@@ -1,6 +1,7 @@
 """
 Tests for utility functions in leantree.utils
 """
+
 import sys
 import traceback
 
@@ -138,8 +139,11 @@ def test_deserialize_with_exception_info_only():
         "exception_info": {
             "type": "ValueError",
             "message": "Test error",
-            "traceback": ["Traceback (most recent call last):\n", "  File \"test.py\", line 1\n",
-                          "ValueError: Test error\n"],
+            "traceback": [
+                "Traceback (most recent call last):\n",
+                '  File "test.py", line 1\n',
+                "ValueError: Test error\n",
+            ],
         }
     }
 
@@ -279,12 +283,14 @@ def run_all_tests():
             print(f"\n❌ {test_name} failed with assertion error:")
             print(f"   {e}")
             import traceback
+
             traceback.print_exc()
             return 1
         except Exception as e:
             print(f"\n❌ {test_name} failed with error:")
             print(f"   {e}")
             import traceback
+
             traceback.print_exc()
             return 1
 

@@ -20,7 +20,9 @@ from leantree.file_span import FileSpan
 class RemoteException(RuntimeError):
     """Exception wrapper that preserves server-side traceback information."""
 
-    def __init__(self, message: str, original_exception: Exception = None, traceback_str: str = None):
+    def __init__(
+        self, message: str, original_exception: Exception = None, traceback_str: str = None
+    ):
         # Include traceback in the message so it's visible when exception is printed
         if traceback_str:
             full_message = f"{message}\n\nServer traceback:\n{traceback_str}"
@@ -36,14 +38,14 @@ class RemoteException(RuntimeError):
 def serialize_exception(exception: Exception) -> dict:
     """
     Serialize an exception for transmission over the network.
-    
+
     Attempts to pickle the exception directly. If that fails, falls back to
     storing exception metadata (type, message, traceback).
     Always includes traceback information since tracebacks are not picklable.
-    
+
     Args:
         exception: The exception to serialize
-        
+
     Returns:
         A dictionary containing either:
         - "exception": base64-encoded pickled exception (if pickling succeeds)
@@ -52,7 +54,9 @@ def serialize_exception(exception: Exception) -> dict:
         - "pickle_error": error message if pickling failed
     """
     # Always capture traceback since it's not picklable
-    traceback_str = "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
+    traceback_str = "".join(
+        traceback.format_exception(type(exception), exception, exception.__traceback__)
+    )
 
     try:
         # Try to pickle the exception directly
@@ -77,19 +81,19 @@ def serialize_exception(exception: Exception) -> dict:
 def deserialize_exception(error_data: dict, error_message: str = None) -> Exception:
     """
     Deserialize an exception from network transmission data.
-    
+
     Attempts to unpickle the exception directly. If that fails, uses exception_info
     to create a proxy exception with the same type and message.
     Always includes traceback information from the server.
-    
+
     Args:
         error_data: Dictionary containing serialized exception data (from serialize_exception)
         error_message: Optional error message to use in the RuntimeError wrapper
-        
+
     Returns:
         A RuntimeError with the original exception (or proxy) set as __cause__
         and traceback information attached
-        
+
     Raises:
         RuntimeError: Always raises a RuntimeError with the original exception as cause
     """
@@ -115,7 +119,7 @@ def deserialize_exception(error_data: dict, error_message: str = None) -> Except
             return RemoteException(
                 error_message or "Error from remote server",
                 original_exception=original_exception,
-                traceback_str=traceback_str
+                traceback_str=traceback_str,
             )
         except Exception as unpickle_error:
             # If unpickling fails, check if we have exception_info as fallback
@@ -129,18 +133,17 @@ def deserialize_exception(error_data: dict, error_message: str = None) -> Except
                 return RemoteException(
                     error_message or "Error from remote server",
                     original_exception=proxy_exception,
-                    traceback_str=traceback_str
+                    traceback_str=traceback_str,
                 )
             else:
                 # If unpickling fails and no fallback, raise with error message
                 return RemoteException(
                     f"{error_message or 'Error from remote server'} (failed to unpickle exception: {unpickle_error})",
-                    traceback_str=traceback_str
+                    traceback_str=traceback_str,
                 )
     else:
         return RemoteException(
-            error_message or "Error from remote server",
-            traceback_str=traceback_str
+            error_message or "Error from remote server", traceback_str=traceback_str
         )
 
 
@@ -174,7 +177,7 @@ def to_sync(func):
 class AsyncToSyncIterator:
     """
     A synchronous iterator wrapper for an asynchronous iterator.
-    
+
     This class allows asynchronous iterators to be used in synchronous contexts
     by converting async iteration to sync iteration.
     """
@@ -197,7 +200,7 @@ class AsyncToSyncIterator:
 def to_sync_iterator(func):
     """
     Decorator to convert an async iterator function to a sync iterator function.
-    
+
     This decorator takes an async function that returns an AsyncIterator and
     converts it to a synchronous function that returns a regular Iterator.
     """
@@ -219,12 +222,12 @@ def to_sync_iterator(func):
 
 
 def pretty_print_tree[TypeNode](
-        root: TypeNode,
-        get_children: Callable[[TypeNode], list[TypeNode]],
-        node_to_str: Callable[[TypeNode], str],
-        edge_to_str: Callable[[TypeNode], str | None] | None = None,
-        max_label_len=55,
-        max_edge_label_len=None,
+    root: TypeNode,
+    get_children: Callable[[TypeNode], list[TypeNode]],
+    node_to_str: Callable[[TypeNode], str],
+    edge_to_str: Callable[[TypeNode], str | None] | None = None,
+    max_label_len=55,
+    max_edge_label_len=None,
 ) -> str:
     def trimmed_edge_to_str(e: TypeNode) -> str | None:
         if edge_to_str is None:
@@ -236,7 +239,7 @@ def pretty_print_tree[TypeNode](
             return s
         if len(s) > max_edge_label_len:
             dots = "..."
-            return s[:max_edge_label_len - len(dots)] + dots
+            return s[: max_edge_label_len - len(dots)] + dots
         return s
 
     pt = PrettyPrintTree(
@@ -251,20 +254,20 @@ def pretty_print_tree[TypeNode](
 
 
 def get_args_descriptor(
-        args_ns: argparse.Namespace,
-        *args,
-        **kwargs,
+    args_ns: argparse.Namespace,
+    *args,
+    **kwargs,
 ):
     return get_dict_descriptor(vars(args_ns), *args, **kwargs)
 
 
 def get_dict_descriptor(
-        args: dict,
-        param_blacklist: Set[str] | None = None,
-        param_whitelist: Set[str] | None = None,
-        extra_args: dict[str, object] | None = None,
-        include_slurm_id=True,
-        include_time=True,
+    args: dict,
+    param_blacklist: Set[str] | None = None,
+    param_whitelist: Set[str] | None = None,
+    extra_args: dict[str, object] | None = None,
+    include_slurm_id=True,
+    include_time=True,
 ) -> str:
     if include_time:
         descriptor = datetime.datetime.now().strftime("%y-%m-%d_%H%M%S")
@@ -299,10 +302,12 @@ def get_dict_descriptor(
     if len(visible_args) > 0:
         if len(descriptor) > 0:
             descriptor += "-"
-        descriptor += ",".join((
-            "{}={}".format(re.sub("(.)[^_]*_?", r"\1", k), format_value(v))
-            for k, v in visible_args.items()
-        ))
+        descriptor += ",".join(
+            (
+                "{}={}".format(re.sub("(.)[^_]*_?", r"\1", k), format_value(v))
+                for k, v in visible_args.items()
+            )
+        )
 
     assert len(descriptor) > 0
 
@@ -411,14 +416,14 @@ def remove_comments(source: str) -> str:
                     result_line += to_process
                 break
             first_idx = min(indices)
-            match to_process[first_idx:first_idx + 2]:
+            match to_process[first_idx : first_idx + 2]:
                 case "-/":
                     inside_comment = False
-                    to_process = to_process[first_idx + 2:]
+                    to_process = to_process[first_idx + 2 :]
                 case "/-":
                     inside_comment = True
                     result_line += to_process[:first_idx]
-                    to_process = to_process[first_idx + 2:]
+                    to_process = to_process[first_idx + 2 :]
                 case "--":
                     result_line += to_process[:first_idx]
                     to_process = ""
@@ -445,10 +450,10 @@ def replace_with_sorries(theorem_str: str, sorries_mask: list[FileSpan]) -> str:
 
 
 def get_source_with_sorries(
-        span: FileSpan,
-        sorries_mask: list[FileSpan] | None,
-        file_content: str | None = None,
-        file_path: Path | str | None = None,
+    span: FileSpan,
+    sorries_mask: list[FileSpan] | None,
+    file_content: str | None = None,
+    file_path: Path | str | None = None,
 ) -> str:
     if file_content is None:
         with file_path.open("r", encoding="utf-8") as f:

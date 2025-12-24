@@ -47,11 +47,15 @@ def test_thm_2_le_5(fixture_env):
     example : 2 ≤ 5 := by sorry
     """
 
-    apply_tactics(fixture_env, thm_2_le_5, [
-        "apply Nat.le_trans",
-        "case m => use 3",
-        "decide",
-    ])
+    apply_tactics(
+        fixture_env,
+        thm_2_le_5,
+        [
+            "apply Nat.le_trans",
+            "case m => use 3",
+            "decide",
+        ],
+    )
 
 
 def test_thm_disj_comm(fixture_env):
@@ -59,18 +63,24 @@ def test_thm_disj_comm(fixture_env):
     example : ∀ (p q: Prop), p ∨ q → q ∨ p := by sorry
     """
 
-    apply_tactics(fixture_env, thm_disj_comm, [
-        "intro p q h",
-        "cases h",
-        "apply Or.inr",
-        "assumption",
-    ])
+    apply_tactics(
+        fixture_env,
+        thm_disj_comm,
+        [
+            "intro p q h",
+            "cases h",
+            "apply Or.inr",
+            "assumption",
+        ],
+    )
 
 
 def test_apply_cases_tactic(fixture_env: LeanProcess):
     env = fixture_env
     env.send_command("import Mathlib\nopen BigOperators Real Nat Topology Rat")
-    branch = env.proof_from_sorry("theorem succ_less_double_succ (n : Nat) : n > 0 → n < 2 * n := by sorry")
+    branch = env.proof_from_sorry(
+        "theorem succ_less_double_succ (n : Nat) : n > 0 → n < 2 * n := by sorry"
+    )
     zero, succ = branch.apply_tactic("cases n")
     print("Factorized proof states after `cases n`:")
     print(zero.state)
@@ -92,5 +102,7 @@ def test_load_theorem_from_file(fixture_project: LeanProject, fixture_file_with_
 async def test_apply_cases_tactic_2(fixture_project: LeanProject):
     async with fixture_project.environment() as env:
         await env.send_command_async("import Mathlib\nopen BigOperators Real Nat Topology Rat")
-        branch = await env.proof_from_sorry_async("theorem succ_less_double_succ (n : Nat) : n > 0 → n < 2 * n := by sorry")
+        branch = await env.proof_from_sorry_async(
+            "theorem succ_less_double_succ (n : Nat) : n > 0 → n < 2 * n := by sorry"
+        )
         zero, succ = await branch.apply_tactic_async("cases n")
