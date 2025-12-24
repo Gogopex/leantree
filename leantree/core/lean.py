@@ -28,9 +28,7 @@ class LeanHypothesis:
     @classmethod
     def deserialize(cls, data: dict) -> Self:
         return LeanHypothesis(
-            type=data["type"],
-            user_name=data["user_name"],
-            value=data.get("value")
+            type=data["type"], user_name=data["user_name"], value=data.get("value")
         )
 
     def __str__(self):
@@ -60,8 +58,8 @@ class LeanHypothesis:
         assert len(assign_signs_indices) <= 1
         if assign_signs_indices:
             hyp_type, value = (
-                hyp_type[:assign_signs_indices[0]].strip(),
-                hyp_type[assign_signs_indices[0] + 2:].strip()
+                hyp_type[: assign_signs_indices[0]].strip(),
+                hyp_type[assign_signs_indices[0] + 2 :].strip(),
             )
 
         return [LeanHypothesis(hyp_type, name, value) for name in names]
@@ -79,7 +77,7 @@ class LeanHypothesis:
                 elif s[i] == b[1]:
                     assert depths[b] > 0
                     depths[b] -= 1
-            if s[i:i + 2] == ":=" and all(d == 0 for d in depths.values()):
+            if s[i : i + 2] == ":=" and all(d == 0 for d in depths.values()):
                 result.append(i)
         return result
 
@@ -114,9 +112,9 @@ class LeanGoal(ProofGoal):
 
     def __str__(self):
         return (
-                (f"case {self.tag}\n" if self.tag else "") +
-                "\n".join(h.__str__() for h in self.hypotheses) +
-                f"\n{self.TargetSymbol} {self.type}"
+            (f"case {self.tag}\n" if self.tag else "")
+            + "\n".join(h.__str__() for h in self.hypotheses)
+            + f"\n{self.TargetSymbol} {self.type}"
         )
 
     def with_(self, **changes) -> Self:
@@ -132,7 +130,7 @@ class LeanGoal(ProofGoal):
         if lines[0].startswith("case ") and ":" not in lines[0]:
             tag_match = LeanGoal.TagRegex.match(lines[0])
             tag = tag_match.group(1).strip()
-            goal_str = goal_str[len(tag_match.group(0)):].strip()
+            goal_str = goal_str[len(tag_match.group(0)) :].strip()
 
         assert goal_str.count(LeanGoal.TargetSymbol) == 1
         hypotheses_str, type_str = goal_str.split(LeanGoal.TargetSymbol)
@@ -150,7 +148,9 @@ class LeanGoal(ProofGoal):
 
         return cls(type_str.strip(), hypotheses, tag)
 
-    def semantic_equals(self, other: Self, ignore_metavars: bool = False, ignore_tags: bool = False) -> bool:
+    def semantic_equals(
+        self, other: Self, ignore_metavars: bool = False, ignore_tags: bool = False
+    ) -> bool:
         def normalize_str(s: str) -> str:
             return re.sub(r"\s+", " ", s)
 
@@ -170,23 +170,22 @@ class LeanGoal(ProofGoal):
         other_tags = other.tag.split(".") if other.tag else []
         tag_equals = all(
             self_tag_part == other_tag_part
-            for self_tag_part, other_tag_part
-            in zip(reversed(self_tags), reversed(other_tags))
+            for self_tag_part, other_tag_part in zip(reversed(self_tags), reversed(other_tags))
         )
         if not ignore_metavars:
             return (
-                    normalize_str(self.type) == normalize_str(other.type) and
-                    self_hyps == other_hyps and
-                    (tag_equals or ignore_tags)
+                normalize_str(self.type) == normalize_str(other.type)
+                and self_hyps == other_hyps
+                and (tag_equals or ignore_tags)
             )
         else:
             return (
-                    self._equal_up_to_metavar(normalize_str(self.type), normalize_str(other.type)) and
-                    all(
-                        self._equal_up_to_metavar(self_hyp, other_hyp)
-                        for self_hyp, other_hyp in zip(self_hyps, other_hyps)
-                    ) and
-                    (tag_equals or ignore_tags)
+                self._equal_up_to_metavar(normalize_str(self.type), normalize_str(other.type))
+                and all(
+                    self._equal_up_to_metavar(self_hyp, other_hyp)
+                    for self_hyp, other_hyp in zip(self_hyps, other_hyps)
+                )
+                and (tag_equals or ignore_tags)
             )
 
     # TODO!!: this is a much harder problem! The metavar substitutions can contain spaces!
@@ -220,15 +219,12 @@ class LeanProofState(ProofState):
         return len(self.goals) == 0
 
     def semantic_equals(self, other: Self) -> bool:
-        return (
-                len(self.goals) == len(other.goals) and
-                all(g1.semantic_equals(g2) for g1, g2 in zip(self.goals, other.goals))
+        return len(self.goals) == len(other.goals) and all(
+            g1.semantic_equals(g2) for g1, g2 in zip(self.goals, other.goals)
         )
 
     def serialize(self) -> dict:
-        return {
-            "goals": [g.serialize() for g in self.goals]
-        }
+        return {"goals": [g.serialize() for g in self.goals]}
 
     @classmethod
     def deserialize(cls, data: dict) -> Self:

@@ -7,6 +7,7 @@ from leantree.utils import Logger, LogLevel
 
 REPL_EXE = Path("../lean-repl/.lake/build/bin/repl")
 
+
 @pytest.fixture
 def fixture_project():
     project_path = Path("../leantree_project")
@@ -28,6 +29,8 @@ def fixture_env(fixture_project: LeanProject):
 def fixture_file_with_theorem():
     path = Path(tempfile.mktemp(suffix=".lean"))
     with open(path, "w") as f:
-        f.write("import Mathlib\n\ntheorem sub_zero' (a b : ℕ) (h : b = 0) : a - b = a := by\nrw [h]\nrw [Nat.sub_zero]")
+        f.write(
+            "import Mathlib\n\ntheorem sub_zero' (a b : ℕ) (h : b = 0) : a - b = a := by\nrw [h]\nrw [Nat.sub_zero]"
+        )
     yield path
     path.unlink()

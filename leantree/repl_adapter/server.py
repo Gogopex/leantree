@@ -17,7 +17,13 @@ from leantree.utils import serialize_exception, deserialize_exception, ValueOrEr
 class LeanServer:
     """Manages a LeanProcessPool and exposes it over a HTTP port."""
 
-    def __init__(self, pool: LeanProcessPool, address: str = "localhost", port: int = 8000, log_level: str = "INFO"):
+    def __init__(
+        self,
+        pool: LeanProcessPool,
+        address: str = "localhost",
+        port: int = 8000,
+        log_level: str = "INFO",
+    ):
         self.pool = pool
         self.address = address
         self.port = port
@@ -30,7 +36,9 @@ class LeanServer:
         self.logger.setLevel(log_level)
         if not self.logger.handlers:
             handler = logging.StreamHandler()
-            handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            )
             self.logger.addHandler(handler)
 
         self._process_id_counter = 0
@@ -207,7 +215,12 @@ class LeanServer:
                     # Get the first proof branch
                     # proofs_from_sorries_async returns an AsyncIterator, so we need to collect it
                     async def collect_proof_branches():
-                        return [branch async for branch in process.proofs_from_sorries_async(theorem_with_sorry)]
+                        return [
+                            branch
+                            async for branch in process.proofs_from_sorries_async(
+                                theorem_with_sorry
+                            )
+                        ]
 
                     try:
                         proof_branches = server._run_async(collect_proof_branches())
@@ -285,7 +298,12 @@ class LeanServer:
                         return
 
                     if "goals" not in response_dict:
-                        self._send_json(200, {"error": f"Could not apply tactic in REPL: {json.dumps(response_dict)}"})
+                        self._send_json(
+                            200,
+                            {
+                                "error": f"Could not apply tactic in REPL: {json.dumps(response_dict)}"
+                            },
+                        )
                         return
 
                     # Extract goals and new proof state
@@ -401,9 +419,7 @@ class LeanRemoteProcess:
     def send_command(self, command: str) -> dict:
         """Send a command to the remote process."""
         return self.client._request(
-            "POST",
-            f"/process/{self.process_id}/command",
-            {"command": command}
+            "POST", f"/process/{self.process_id}/command", {"command": command}
         )
 
     def return_process(self):
@@ -415,19 +431,18 @@ class LeanRemoteProcess:
         response = self.client._request(
             "POST",
             f"/process/{self.process_id}/proof_from_sorry",
-            {"theorem_with_sorry": theorem_with_sorry}
+            {"theorem_with_sorry": theorem_with_sorry},
         )
 
         if "error" in response:
             return ValueOrError.from_error(response["error"])
 
         value = response["value"]
-        return ValueOrError.from_success(RemoteLeanProofBranch(
-            self.client,
-            self.process_id,
-            value["proof_state_id"],
-            value["goals"]
-        ))
+        return ValueOrError.from_success(
+            RemoteLeanProofBranch(
+                self.client, self.process_id, value["proof_state_id"], value["goals"]
+            )
+        )
 
 
 class RemoteLeanProofBranch:
@@ -445,10 +460,10 @@ class RemoteLeanProofBranch:
         return LeanProofState(self._goals)
 
     def try_apply_tactic(
-            self,
-            tactic: LeanTactic | str,
-            ban_search_tactics: bool = True,
-            timeout: int | None = 1000,
+        self,
+        tactic: LeanTactic | str,
+        ban_search_tactics: bool = True,
+        timeout: int | None = 1000,
     ) -> ValueOrError[list["RemoteLeanProofBranch"]]:
         """Apply a tactic to the proof branch."""
         if isinstance(tactic, LeanTactic):
@@ -461,7 +476,7 @@ class RemoteLeanProofBranch:
         response = self.client._request(
             "POST",
             f"/process/{self.process_id}/proof/{self._proof_state_id}/try_apply_tactic",
-            data
+            data,
         )
 
         if "error" in response:
@@ -470,21 +485,20 @@ class RemoteLeanProofBranch:
         branches_data = response["value"]
         branches = []
         for branch_data in branches_data:
-            branches.append(RemoteLeanProofBranch(
-                self.client,
-                self.process_id,
-                branch_data["proof_state_id"],
-                branch_data["goals"]
-            ))
+            branches.append(
+                RemoteLeanProofBranch(
+                    self.client,
+                    self.process_id,
+                    branch_data["proof_state_id"],
+                    branch_data["goals"],
+                )
+            )
 
         return ValueOrError.from_success(branches)
 
 
 def start_server(
-        pool: LeanProcessPool,
-        address: str = "localhost",
-        port: int = 8000,
-        log_level: str = "INFO"
+    pool: LeanProcessPool, address: str = "localhost", port: int = 8000, log_level: str = "INFO"
 ) -> LeanServer:
     """Start a LeanServer with the given pool."""
     server = LeanServer(pool, address, port, log_level)

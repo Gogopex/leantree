@@ -1,7 +1,11 @@
 import re
 
 import leantree.utils
-from leantree.repl_adapter.data import SingletonProofTree, SingletonProofTreeNode, SingletonProofTreeEdge
+from leantree.repl_adapter.data import (
+    SingletonProofTree,
+    SingletonProofTreeNode,
+    SingletonProofTreeEdge,
+)
 from leantree.file_span import FileSpan
 from leantree.repl_adapter.ast_parser import LeanASTObject, LeanASTArray
 
@@ -22,9 +26,9 @@ class ProofTreePostprocessor:
             cls._transform_simp_rw(node)
             cls._transform_rw(node)
 
-            node.tactic.tactic_string = leantree.utils.remove_empty_lines(leantree.utils.remove_comments(
-                node.tactic.tactic_string
-            ))
+            node.tactic.tactic_string = leantree.utils.remove_empty_lines(
+                leantree.utils.remove_comments(node.tactic.tactic_string)
+            )
 
         cls._add_missing_assumption_tactics(tree)
         tree.traverse_preorder(visitor)
@@ -40,12 +44,14 @@ class ProofTreePostprocessor:
         # This fix seems reckless, but the resulting trees are later verified for correctness.
         def visitor(node: SingletonProofTreeNode):
             if node.tactic is None:
-                node.set_edge(SingletonProofTreeEdge.create_synthetic(
-                    tactic_string="assumption",
-                    goal_before=node.goal,
-                    goals_after=[],
-                    spawned_goals=[],
-                ))
+                node.set_edge(
+                    SingletonProofTreeEdge.create_synthetic(
+                        tactic_string="assumption",
+                        goal_before=node.goal,
+                        goals_after=[],
+                        spawned_goals=[],
+                    )
+                )
 
         tree.traverse_preorder(visitor)
 
@@ -64,8 +70,9 @@ class ProofTreePostprocessor:
         else:
             return
 
-        assert len(constructors) == len(node.tactic.spawned_goals),\
+        assert len(constructors) == len(node.tactic.spawned_goals), (
             "Different number of constructors and spawned goal for cases/induction."
+        )
         intermezzo_nodes = []
         for constructor, child in zip(constructors, node.tactic.spawned_goals):
             # We do not want to synthesize the state before the renaming of constructor variables, so we leave that to
@@ -74,12 +81,14 @@ class ProofTreePostprocessor:
                 parent=node,
             )
             # The `case` tactic handles renaming of inaccessible hypotheses.
-            intermezzo_node.set_edge(SingletonProofTreeEdge.create_synthetic(
-                tactic_string=f"case {constructor}",
-                goal_before=intermezzo_node.goal,
-                spawned_goals=[child],
-                goals_after=[],
-            ))
+            intermezzo_node.set_edge(
+                SingletonProofTreeEdge.create_synthetic(
+                    tactic_string=f"case {constructor}",
+                    goal_before=intermezzo_node.goal,
+                    spawned_goals=[child],
+                    goals_after=[],
+                )
+            )
             intermezzo_nodes.append(intermezzo_node)
         node.tactic.spawned_goals = intermezzo_nodes
         node.tactic.tactic_string = match.group(1)
@@ -120,7 +129,9 @@ class ProofTreePostprocessor:
         # By blocks are also in any number of other places, like `exact sum_congr rfl fun x _ ↦ by ac_rfl`.
         sub_spans = []
         for ancestor in ancestors:
-            if not ancestor.tactic.is_synthetic() and node.tactic.span.contains(ancestor.tactic.span):
+            if not ancestor.tactic.is_synthetic() and node.tactic.span.contains(
+                ancestor.tactic.span
+            ):
                 sub_spans.append(ancestor.tactic.span.relative_to(node.tactic.span.start))
         if sub_spans:
             sub_spans = FileSpan.merge_contiguous_spans(
@@ -137,7 +148,9 @@ class ProofTreePostprocessor:
 
     @classmethod
     def _remove_by_sorry_in_have(cls, node: SingletonProofTreeNode):
-        match = re.match(r"(have[ \t]+[^\n]+?)[ \t]+:=[ \t]+by[ \t\n]+sorry", node.tactic.tactic_string)
+        match = re.match(
+            r"(have[ \t]+[^\n]+?)[ \t]+:=[ \t]+by[ \t\n]+sorry", node.tactic.tactic_string
+        )
         if not match:
             return
         if len(node.tactic.spawned_goals) != 1:
@@ -152,18 +165,18 @@ class ProofTreePostprocessor:
     def _extract_cases_constructors(cls, node: SingletonProofTreeNode) -> list[str]:
         ast_node = node.tactic.ast.root
         assert (
-                isinstance(ast_node, LeanASTObject) and
-                len(ast_node.args) == 4 and
-                ast_node.args[0].pretty_print() == "cases"
+            isinstance(ast_node, LeanASTObject)
+            and len(ast_node.args) == 4
+            and ast_node.args[0].pretty_print() == "cases"
         )
         alts_array = ast_node.args[3]
         assert isinstance(alts_array, LeanASTArray) and len(alts_array.items) == 1
         alts_node = alts_array.items[0]
         assert (
-                isinstance(alts_node, LeanASTObject) and
-                alts_node.type == "Tactic.inductionAlts" and
-                len(alts_node.args) == 3 and
-                alts_node.args[0].pretty_print() == "with"
+            isinstance(alts_node, LeanASTObject)
+            and alts_node.type == "Tactic.inductionAlts"
+            and len(alts_node.args) == 3
+            and alts_node.args[0].pretty_print() == "with"
         )
         alts = alts_node.args[2]
         assert isinstance(alts, LeanASTArray)
@@ -171,10 +184,10 @@ class ProofTreePostprocessor:
         constructors = []
         for alt in alts.items:
             assert (
-                    isinstance(alt, LeanASTObject) and
-                    alt.type == "Tactic.inductionAlt" and
-                    len(alt.args) == 3 and
-                    alt.args[1].pretty_print() == "=>"
+                isinstance(alt, LeanASTObject)
+                and alt.type == "Tactic.inductionAlt"
+                and len(alt.args) == 3
+                and alt.args[1].pretty_print() == "=>"
             )
             constructor_tokens = alt.args[0].get_tokens()
             assert constructor_tokens[0] == "|"
@@ -186,18 +199,18 @@ class ProofTreePostprocessor:
     def _extract_induction_constructors(cls, node: SingletonProofTreeNode) -> list[str]:
         ast_node = node.tactic.ast.root
         assert (
-                isinstance(ast_node, LeanASTObject) and
-                len(ast_node.args) == 5 and
-                ast_node.args[0].pretty_print() == "induction"
+            isinstance(ast_node, LeanASTObject)
+            and len(ast_node.args) == 5
+            and ast_node.args[0].pretty_print() == "induction"
         )
         alts_array = ast_node.args[4]
         assert isinstance(alts_array, LeanASTArray) and len(alts_array.items) == 1
         alts_node = alts_array.items[0]
         assert (
-                isinstance(alts_node, LeanASTObject) and
-                alts_node.type == "Tactic.inductionAlts" and
-                len(alts_node.args) == 3 and
-                alts_node.args[0].pretty_print() == "with"
+            isinstance(alts_node, LeanASTObject)
+            and alts_node.type == "Tactic.inductionAlts"
+            and len(alts_node.args) == 3
+            and alts_node.args[0].pretty_print() == "with"
         )
         alts = alts_node.args[2]
         assert isinstance(alts, LeanASTArray)
@@ -205,10 +218,10 @@ class ProofTreePostprocessor:
         constructors = []
         for alt in alts.items:
             assert (
-                    isinstance(alt, LeanASTObject) and
-                    alt.type == "Tactic.inductionAlt" and
-                    len(alt.args) == 3 and
-                    alt.args[1].pretty_print() == "=>"
+                isinstance(alt, LeanASTObject)
+                and alt.type == "Tactic.inductionAlt"
+                and len(alt.args) == 3
+                and alt.args[1].pretty_print() == "=>"
             )
             constructor_tokens = alt.args[0].get_tokens()
             assert constructor_tokens[0] == "|"
@@ -241,12 +254,14 @@ class ProofTreePostprocessor:
             child = SingletonProofTreeNode.create_synthetic(
                 parent=curr_node,
             )
-            child.set_edge(SingletonProofTreeEdge.create_synthetic(
-                tactic_string=simp_only(rule),
-                goal_before=child.goal,
-                spawned_goals=[],
-                goals_after=[],  # Will be filled in.
-            ))
+            child.set_edge(
+                SingletonProofTreeEdge.create_synthetic(
+                    tactic_string=simp_only(rule),
+                    goal_before=child.goal,
+                    spawned_goals=[],
+                    goals_after=[],  # Will be filled in.
+                )
+            )
             curr_node.tactic.goals_after = [child]
             child.parent = curr_node
 

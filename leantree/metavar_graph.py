@@ -26,7 +26,8 @@ class MetavarGraph:
                 *self.mvars[goal.mvar_id].mvarsInType,
                 *[
                     hyp_mvar
-                    for h in goal.hypotheses if h.mvar_id in self.mvars
+                    for h in goal.hypotheses
+                    if h.mvar_id in self.mvars
                     for hyp_mvar in self.mvars[h.mvar_id].mvarsInType
                 ],
             ]
@@ -39,10 +40,12 @@ class MetavarGraph:
 
     @classmethod
     def from_dict(cls, data: dict) -> Self:
-        return cls.from_list([
-            MetavarInfo(mvar["userName"], mvar["type"], mvar["mvarsInType"], mvar["mvarId"])
-            for mvar in data["decls"]
-        ])
+        return cls.from_list(
+            [
+                MetavarInfo(mvar["userName"], mvar["type"], mvar["mvarsInType"], mvar["mvarId"])
+                for mvar in data["decls"]
+            ]
+        )
 
     def partition_independent_goals(self, goals: list[LeanGoal]) -> list[list[LeanGoal]]:
         """
@@ -59,8 +62,7 @@ class MetavarGraph:
                 if branch_tags[i] != branch_tags[j] and self.goals_connected(goals[i], goals[j]):
                     # Merge the two branches (replace branch_tags[j] with branch_tags[i] everywhere).
                     branch_tags = [
-                        branch_tags[i] if tag == branch_tags[j] else tag
-                        for tag in branch_tags
+                        branch_tags[i] if tag == branch_tags[j] else tag for tag in branch_tags
                     ]
         result = []
         for tag in list(dict.fromkeys(branch_tags)):  # dict keeps order

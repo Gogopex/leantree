@@ -5,14 +5,13 @@ from typing import Self
 from leantree.core.proof_tree import ProofTree
 from leantree.file_span import FileSpan
 
+
 @dataclass
 class StoredError:
     error: str
 
     def serialize(self) -> dict:
-        return {
-            "error": self.error
-        }
+        return {"error": self.error}
 
     @classmethod
     def deserialize(cls, data: dict) -> Self:
@@ -40,9 +39,12 @@ class LeanTacticBlock:
     def deserialize(cls, data: dict, theorem: "LeanTheorem") -> "LeanTacticBlock":
         return LeanTacticBlock(
             theorem=theorem,
-            tree=ProofTree.deserialize(data["tree"]) if data["tree"].get("error") is None else StoredError.deserialize(data["tree"]),
+            tree=ProofTree.deserialize(data["tree"])
+            if data["tree"].get("error") is None
+            else StoredError.deserialize(data["tree"]),
             span=FileSpan.deserialize(data["span"]),
         )
+
 
 # TODO: start_proof(env) method
 @dataclass(eq=False)
@@ -87,6 +89,7 @@ class LeanTheorem:
     def load_source(self) -> str:
         return self.span.read_from_file(self.file.path)
 
+
 @dataclass(eq=False)
 class LeanFile:
     path: Path
@@ -97,7 +100,7 @@ class LeanFile:
         return {
             "path": str(self.path),
             "imports": self.imports,
-            "theorems": [t.serialize() for t in self.theorems]
+            "theorems": [t.serialize() for t in self.theorems],
         }
 
     @classmethod

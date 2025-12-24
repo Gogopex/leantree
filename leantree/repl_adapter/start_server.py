@@ -15,48 +15,35 @@ def main():
     """CLI entry point for the Lean server."""
     parser = argparse.ArgumentParser(description="Start a Lean server")
     parser.add_argument(
-        "--address",
-        type=str,
-        default="localhost",
-        help="Server address (default: localhost)"
+        "--address", type=str, default="localhost", help="Server address (default: localhost)"
     )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="Server port (default: 8000)"
-    )
+    parser.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
     parser.add_argument(
         "--repl-exe",
         type=str,
         default=None,
-        help="Path to Lean REPL executable (default: from LEAN_REPL_EXE)"
+        help="Path to Lean REPL executable (default: from LEAN_REPL_EXE)",
     )
     parser.add_argument(
         "--project-path",
         type=str,
         default=None,
-        help="Path to Lean project (default: from LEAN_PROJECT_PATH env or ./leantree_project)"
+        help="Path to Lean project (default: from LEAN_PROJECT_PATH env or ./leantree_project)",
     )
     parser.add_argument(
         "--max-processes",
         type=int,
         default=8,
-        help="Maximum number of parallel processes (default: 2)"
+        help="Maximum number of parallel processes (default: 2)",
     )
     parser.add_argument(
         "--log-level",
         type=str,
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level (default: INFO)"
+        help="Logging level (default: INFO)",
     )
-    parser.add_argument(
-        "--imports",
-        type=str,
-        nargs="*",
-        help="List of Lean packages to import"
-    )
+    parser.add_argument("--imports", type=str, nargs="*", help="List of Lean packages to import")
 
     args = parser.parse_args()
 
@@ -70,7 +57,9 @@ def main():
 
     if not repl_exe.exists():
         print(f"Error: REPL executable not found at {repl_exe}", file=sys.stderr)
-        print("Please specify --repl-exe or set LEAN_REPL_EXE environment variable", file=sys.stderr)
+        print(
+            "Please specify --repl-exe or set LEAN_REPL_EXE environment variable", file=sys.stderr
+        )
         sys.exit(1)
 
     # Determine project_path
@@ -84,15 +73,20 @@ def main():
 
     if not project_path.exists():
         print(f"Error: Project path not found at {project_path}", file=sys.stderr)
-        print("Please specify --project-path or set LEAN_PROJECT_PATH environment variable", file=sys.stderr)
+        print(
+            "Please specify --project-path or set LEAN_PROJECT_PATH environment variable",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Create process pool
     env_setup_async = None
     if args.imports:
+
         async def setup_imports(process):
             imports_str = "\n".join(f"import {imp}" for imp in args.imports)
             await process.send_command_async(imports_str)
+
         env_setup_async = setup_imports
 
     pool = LeanProcessPool(
@@ -104,16 +98,11 @@ def main():
     )
 
     # Start server
-    server = start_server(
-        pool,
-        address=args.address,
-        port=args.port,
-        log_level=args.log_level
-    )
+    server = start_server(pool, address=args.address, port=args.port, log_level=args.log_level)
     print(f"Lean project: {project_path}")
     print(f"REPL executable: {repl_exe}")
     if args.imports:
-        print(f"Importing packages: {", ".join(args.imports)}")
+        print(f"Importing packages: {', '.join(args.imports)}")
     print(f"Server started on http://{args.address}:{args.port} with log level {args.log_level}")
 
     # Handle shutdown gracefully
@@ -128,6 +117,7 @@ def main():
 
     try:
         import time
+
         while True:
             time.sleep(1)
     except KeyboardInterrupt:

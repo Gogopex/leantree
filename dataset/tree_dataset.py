@@ -31,6 +31,7 @@ from leantree.core.project import LeanProject, LeanTheorem
 #  - `theorem coeff` in Algebra/CubicDiscriminant.lean
 #    - `omega` closes all goals, but then another goal is present when doing `repeat' rw [zero_add]`
 
+
 def create_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
@@ -47,7 +48,9 @@ def create_parser():
     generate.add_argument("--output_dir", type=Path, default="leantree_generated")
     generate.add_argument("--repl_path", type=Path, default="lean-repl/.lake/build/bin/repl")
     generate.add_argument("--skip_until", type=Path)
-    generate.add_argument("--force", action="store_true", help="Override the output file if it already exists.")
+    generate.add_argument(
+        "--force", action="store_true", help="Override the output file if it already exists."
+    )
     generate.add_argument("--use_repl_cache", action="store_true")
 
     generate.add_argument("--total_workers", type=int)
@@ -63,11 +66,15 @@ def create_parser():
     merge_shards.add_argument("shard_directory", type=Path)
     merge_shards.add_argument("--output_dir", type=Path, required=True)
     merge_shards.add_argument("--shards_count", type=int, default=128)
-    merge_shards.add_argument("--force", action="store_true", help="Override the output file if it already exists.")
+    merge_shards.add_argument(
+        "--force", action="store_true", help="Override the output file if it already exists."
+    )
 
     deepseek_convert.add_argument("input_file", type=Path)
     deepseek_convert.add_argument("output_file", type=Path)
-    deepseek_convert.add_argument("--force", action="store_true", help="Override the output file if it already exists.")
+    deepseek_convert.add_argument(
+        "--force", action="store_true", help="Override the output file if it already exists."
+    )
 
     error_stats.add_argument("error_files", type=Path, nargs="+")
     error_stats.add_argument("--output_dir", type=Path, required=True)
@@ -279,13 +286,13 @@ def merge_shards(args):
 
     print(f"Merging shards from {shard_dir} into {output_file}")
 
-    with open(output_file, 'w') as out_f:
+    with open(output_file, "w") as out_f:
         for i in tqdm(range(args.shards_count)):
             shard_file = shard_dir / f"lean-trees-sf=mathlib_Mathlib-{i}.jsonl"
             if not shard_file.exists():
                 raise Exception(f"Shard file {shard_file} does not exist")
 
-            with open(shard_file, 'r') as in_f:
+            with open(shard_file, "r") as in_f:
                 for line in in_f:
                     out_f.write(line)
 
@@ -296,7 +303,7 @@ def deepseek_prover_convert(args):
     if args.output_file.exists() and not args.force:
         raise Exception(f"Output file {args.output_file} already exists")
 
-    with (open(args.input_file) as f, open(args.output_file, 'w') as out_f):
+    with open(args.input_file) as f, open(args.output_file, "w") as out_f:
         for line in tqdm(f):
             theorem = LeanTheorem.deserialize(json.loads(line))
             file = LeanFile(
@@ -305,9 +312,7 @@ def deepseek_prover_convert(args):
                 theorems=[theorem],
             )
             theorem.file = file
-            theorem.context = [
-                "open BigOperators Real Nat Topology Rat"
-            ]
+            theorem.context = ["open BigOperators Real Nat Topology Rat"]
 
             out_f.write(json.dumps(file.serialize(), ensure_ascii=False) + "\n")
 
@@ -400,8 +405,11 @@ def show_errors(args):
                         print(f"THM error: {thm.error}")
                         print("----")
                     continue
-                errors = [by_block.tree for by_block in thm.by_blocks if
-                          isinstance(by_block.tree, StoredError) and should_show(by_block.tree)]
+                errors = [
+                    by_block.tree
+                    for by_block in thm.by_blocks
+                    if isinstance(by_block.tree, StoredError) and should_show(by_block.tree)
+                ]
                 if errors:
                     print(thm.load_source())
                     for error in errors:
